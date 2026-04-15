@@ -1,0 +1,51 @@
+version: "3.8"
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:15-alpine
+    container_name: sleepai-db
+    environment:
+      POSTGRES_DB: sleepdb
+      POSTGRES_USER: sleepuser
+      POSTGRES_PASSWORD: sleeppass123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sleepuser -d sleepdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - sleepai-network
+
+  # Spring Boot Backend
+  backend:
+    build:
+      context: ../sleep-backend
+      dockerfile: Dockerfile
+    container_name: sleepai-backend
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/sleepdb
+      SPRING_DATASOURCE_USERNAME: sleepuser
+      SPRING_DATASOURCE_PASSWORD: sleeppass123
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      JWT_SECRET: your-super-secret-jwt-key-change-in-production-min-32-chars
+      JWT_EXPIRATION: 86400000
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - sleepai-network
+
+volumes:
+  postgres_data:
+
+networks:
+  sleepai-network:
+    driver: bridge

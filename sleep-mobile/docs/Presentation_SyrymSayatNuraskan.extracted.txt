@@ -1,0 +1,271 @@
+
+
+===== PAGE 1 =====
+
+Project Title: Developing an AI-powered Mobile
+Application for Sleep and Stress Analysis
+Project Team:
+Sartay Sayat IT2-2202
+Bertaiyz Nuraskan IT2-2202
+Alizhan Syrym IT2-2202 Supervisor: Nazym T. Barlykbay
+
+
+
+===== PAGE 2 =====
+
+Our Team & Responsibilities
+Sartay Sayat Bertaiyz Nuraskan Alizhan Syrym
+Backend-dev + AI
+(Spring boot, 
+Python)
+Frontend-dev
++ QA Testing
+(React Native) 
+Frontend-dev +
+Documentation 
+(React Native)
+
+
+
+===== PAGE 3 =====
+
+CONTENT OUTLINE
+Abstract 
+Introduction 
+Problem Statement 
+Aim of Research 
+   & Research Questions 
+Literature Review 
+   & Market Analysis
+Research Methodology
+   & Technology Stack
+Results & Future work
+Conclusion
+
+
+
+===== PAGE 4 =====
+
+Project Summary
+Objective: Development of an intelligent mobile system for objective
+monitoring of sleep quality and stress levels using standard
+smartphone sensors.
+ 
+Technology Stack:                           
+                 Backend: Java Spring Boot (REST API, Security). 
+                 Frontend: Cross-platform mobile app (Flutter/React Native). 
+                 AI Service: Python (TensorFlow/PyTorch) for data analysis.
+Key Innovation: Unlike manual trackers, the system uses passive
+data collection (accelerometer, microphone) and Machine Learning to
+identify non-obvious correlations between lifestyle and physical state.
+ 
+Outcome: A scalable architecture that transforms raw sensor data
+into personalized health recommendations. 
+ABSTRACT
+
+
+
+===== PAGE 5 =====
+
+I N T R O D U C T I O N In the modern fast-paced world, chronic stress and
+sleep disorders have become critical issues affecting
+physical and mental health. While people often
+experience fatigue and anxiety, they lack accessible
+tools for an objective assessment of their condition.
+Existing solutions are either too subjective or
+require expensive medical equipment, making the
+monitoring process opaque and inconsistent.
+The goal of this work is to design and develop a
+mobile software system that utilizes artificial
+intelligence for automated, data-driven analysis of
+sleep patterns and stress levels. By leveraging
+passive sensor data (microphone, accelerometer),
+the system aims to provide transparent decision
+support in the form of personalized
+recommendations, helping users improve their well-
+being and form healthier daily habits.
+5
+
+
+
+===== PAGE 6 =====
+
+P R O B L E M 
+S T A T E M E N T 
+The Diagnostic Gap
+Clinical Limitations: Polysomnography (PSG) is
+accurate but expensive, invasive, and
+uncomfortable for patients.
+Consumer Limitations: Wearables and apps
+are accessible but often lack diagnostic accuracy
+and fail to provide clinical-grade insights.
+The "Siloed" Modeling Problem
+Most current solutions model sleep and stress in
+isolation.
+They ignore the clinically established
+bidirectional relationship between sleep
+quality and chronic stress.
+The Technological Gap
+Advanced architectures like Transformers,
+which excel at long-term time series analysis, are
+largely unexplored in consumer health apps.
+Privacy and Explainable AI (XAI) are often treated
+as afterthoughts, not core features.
+
+
+
+===== PAGE 7 =====
+
+AIM OF RESEARCH AND 
+RESEARCH QUESTIONS
+A i m  o f  t h e  P r o j e c t :
+To design and develop a cross-platform mobile
+application for non-invasive monitoring of sleep
+quality and chronic stress using Deep Learning
+algorithms and passive smartphone sensor data.
+R e s e a r c h  Q u e s t i o n s :
+Detection: How can raw audio and accelerometer
+data be effectively transformed (STFT/Mel-
+spectrograms) to detect sleep stages without
+medical equipment?
+Modeling: Which Neural Network architecture
+(CNN-LSTM vs. Transformer) provides the highest
+accuracy for the combined analysis of the sleep-
+stress axis? 
+Architecture: How to design a secure microservice
+architecture (Spring Boot + Python AI) that ensures
+user privacy while handling heavy computations? 
+Sitemap diagram
+
+
+
+===== PAGE 8 =====
+
+Criteria Polysomnography
+(Clinical)
+Wearables
+(Apple Watch,
+Oura)
+Standard Apps
+(e.g., Sleep
+Cycle)
+Our AI Solution
+Accuracy
+Cost /
+Accessibility
+Very Expensive
+(Hospital)
+Hardware Cost
+($300+)
+High
+(Free/Cheap)
+High (Smartphone
+Only)
+Stress
+Analysis None (Sleep only) Isolated Analysis Manual Input /
+None Joint Sleep-Stress Axis
+Technology Medical Sensors
+(EEG) PPG Sensors Basic
+Algorithms
+Deep Learning
+(Transformers)
+ MARKET ANALYSIS
+Key Takeaway:
+Existing solutions are either too expensive or lack diagnostic depth.
+Our project bridges this gap by using Deep Learning to provide
+objective, integrated analysis on a standard smartphone.
+
+
+
+===== PAGE 9 =====
+
+RESEARCH METHODOLOGY
+TECHNOLOGY STACK
+Component diagram
+Mobile App Component
+Role: Responsible for rendering the UI
+and collecting raw data from phone
+sensors (accelerometer, microphone).
+Justification: Chosen for enterprise-
+grade security and scalability, which is
+critical for handling sensitive health data
+Backend API Component
+Role: The Central Orchestrator. Handles
+user authentication (using JWT), data
+cleaning, and validation.
+Justification: Industry standard for ML
+with the best libraries for signal
+processing
+AI Service Component
+Role: The Isolated Computational Core. It
+contains the trained Machine Learning model.
+Justification: Allows cross-platform
+development (iOS/Android) with a single
+codebase while keeping access to native
+sensors.
+Database
+Role: Persistent data storage for entities
+Justification: Allows cross-platform
+development (iOS/Android) with a single
+codebase while keeping access to native
+sensors.
+
+
+
+===== PAGE 10 =====
+
+RESULTS AND 
+FUTURE WORK
+CURRENT PROGRESS
+Data Quality: Addressing the challenge of
+ensuring high data quality from non-
+medical, consumer-grade phone sensors
+(microphone, accelerometer).
+Modeling Gap: The theoretical necessity
+of moving beyond simple analysis to
+jointly model the bidirectional sleep-
+stress axis.
+Architecture Validation: Justifying the
+selection of Spring Boot and PostgreSQL
+over alternatives to ensure robust
+security and scalability for health data.
+FUTURE WORK
+Security Hardening: Implement TLS 1.3
+for data in transit and BCrypt for
+credentials.
+Privacy Engine: Develop a mechanism for
+immediate deletion of raw audio (Data
+Minimization).
+Advanced AI: Research and integrate
+Federated Learning to decentralize model
+training.
+Validation: Conduct end-to-end testing
+with real users to verify diagnostic
+accuracy.
+
+
+
+===== PAGE 11 =====
+
+C O N C L U S I O N 
+1. PROJECT FOCUS
+This project focused on designing the architecture for a
+digital platform for sleep and stress analysis. The proposed
+system includes:
+Mobile application for data collection.
+Powerful backend with an integrated AI service.
+2. DESIGN ACHIEVEMENTS
+During the design phase, we addressed key technical
+challenges:
+Selected an optimal technology stack (Spring Boot,
+Python).
+Developed a logical application structure (Sitemap) and
+Use Cases.
+Designed a secure Database Architecture.
+3. CHALLENGES & NEXT STEPS
+Future Challenges: Ensuring high accuracy from non-medical
+sensors and guaranteeing data privacy. Next Steps:
+Integrating the trained AI model with the backend.
+Finalizing the mobile user interface.
+Conducting thorough testing to verify the usefulness of
+recommendations.

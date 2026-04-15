@@ -1,0 +1,35 @@
+# Python
+sleep-ai/__pycache__/
+sleep-ai/*.pyc
+sleep-ai/.venv/
+sleep-ai/venv/
+sleep-ai/.idea/
+
+# Java/Maven
+sleep-backend/target/
+sleep-backend/.idea/
+sleep-backend/.mvn/wrapper/maven-wrapper.jar
+
+# Node/Expo
+sleep-mobile/node_modules/
+sleep-mobile/.expo/
+sleep-mobile/dist/
+sleep-mobile/web-build/
+sleep-mobile/.venv/
+sleep-mobile/.kotlin/
+sleep-mobile/android/
+sleep-mobile/.env
+sleep-mobile/.env.*
+
+# IDE
+.vscode/
+*.iml
+*.iws
+*.ipr
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Context files (generated)
+*_context.txt
