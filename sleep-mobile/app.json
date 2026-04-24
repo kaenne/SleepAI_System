@@ -20,7 +20,8 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.qiyall1.sleepmobile"
+      "package": "com.qiyall1.sleepmobile",
+      "usesCleartextTraffic": true
     },
     "web": {
       "output": "static",
@@ -28,6 +29,7 @@
     },
     "plugins": [
       "expo-router",
+      "expo-notifications",
       [
         "expo-splash-screen",
         {
