@@ -6,7 +6,8 @@ import * as React from 'react';
 import 'react-native-reanimated';
 
 import { AuthProvider } from '@/contexts/auth-context';
-import { ThemeProvider as SleepThemeProvider, useColorScheme } from '@/contexts/theme-context';
+import { ThemeProvider as SleepThemeProvider } from '@/contexts/theme-context';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { ONBOARDING_KEY } from './onboarding';
 
 export const unstable_settings = {

@@ -220,7 +220,7 @@ export default function AddSleepEntryModal() {
 
           {/* AI Insight */}
           <Animated.View entering={FadeInUp.delay(400).duration(400)}>
-            <Card variant="gradient">
+            <Card variant="elevated">
               <View style={styles.insightContent}>
                 <ThemedText style={styles.insightEmoji}>🤖</ThemedText>
                 <View style={styles.insightText}>
