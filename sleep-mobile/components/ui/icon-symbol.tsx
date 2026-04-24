@@ -14,10 +14,47 @@ type IconSymbolName = keyof typeof MAPPING;
  * - see SF Symbols in the [SF Symbols](https://developer.apple.com/sf-symbols/) app.
  */
 const MAPPING = {
+  // Navigation
   'house.fill': 'home',
-  'paperplane.fill': 'send',
-  'chevron.left.forwardslash.chevron.right': 'code',
   'chevron.right': 'chevron-right',
+  'chevron.left.forwardslash.chevron.right': 'code',
+  
+  // Tab bar
+  'chart.bar.fill': 'bar-chart',
+  'bubble.left.and.bubble.right.fill': 'chat',
+  'gearshape.fill': 'settings',
+  
+  // Actions
+  'paperplane.fill': 'send',
+  'arrow.up': 'arrow-upward',
+  'plus': 'add',
+  
+  // Sleep & Health
+  'moon.fill': 'nightlight-round',
+  'moon.zzz.fill': 'bedtime',
+  'heart.fill': 'favorite',
+  'waveform.path.ecg': 'monitor-heart',
+  'brain.head.profile': 'psychology',
+  'calendar': 'calendar-today',
+  
+  // Settings
+  'bell.fill': 'notifications',
+  'clock.fill': 'schedule',
+  'person.fill': 'person',
+  'person.badge.plus': 'person-add',
+  'lock.fill': 'lock',
+  'rectangle.portrait.and.arrow.right': 'logout',
+  'icloud.fill': 'cloud',
+  'arrow.triangle.2.circlepath': 'sync',
+  'trash.fill': 'delete',
+  'info.circle.fill': 'info',
+  'doc.text.fill': 'description',
+  'hand.raised.fill': 'back-hand',
+  
+  // Stats & Insights
+  'arrow.up.circle.fill': 'trending-up',
+  'star.fill': 'star',
+  'target': 'track-changes',
 } as IconMapping;
 
 /**

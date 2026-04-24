@@ -37,7 +37,7 @@ export default function WelcomeScreen() {
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={[colors.headerGradientStart, colors.headerGradientEnd]}
+        colors={[colors.headerGradientStart, colors.headerGradientMid, colors.headerGradientEnd]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.background}

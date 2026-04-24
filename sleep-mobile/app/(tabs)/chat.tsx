@@ -101,7 +101,7 @@ export default function ChatScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
       <LinearGradient
-        colors={[colors.headerGradientStart, colors.headerGradientEnd]}
+        colors={[colors.headerGradientStart, colors.headerGradientMid, colors.headerGradientEnd]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.header}
@@ -127,8 +127,8 @@ export default function ChatScreen() {
       {/* Chat Messages */}
       <KeyboardAvoidingView 
         style={styles.chatContainer}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={90}
+        behavior="padding"
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
         <ScrollView
           ref={scrollRef}
@@ -145,12 +145,21 @@ export default function ChatScreen() {
                 message.isUser ? styles.userBubble : styles.aiBubble,
                 {
                   backgroundColor: message.isUser 
-                    ? colors.tint 
+                    ? 'transparent'
                     : colors.cardBackground,
                   borderColor: message.isUser ? 'transparent' : colors.cardBorder,
+                  overflow: 'hidden',
                 }
               ]}
             >
+              {message.isUser && (
+                <LinearGradient
+                  colors={[colors.headerGradientStart, colors.tint]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={StyleSheet.absoluteFill}
+                />
+              )}
               <ThemedText 
                 style={[
                   styles.messageText,
@@ -242,7 +251,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 40,
+    paddingTop: 24,
   },
   headerLeft: {
     flexDirection: 'row',
@@ -290,19 +299,24 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   messageBubble: {
-    maxWidth: '80%',
+    maxWidth: '82%',
     padding: 14,
-    borderRadius: 20,
-    marginBottom: 12,
+    borderRadius: 22,
+    marginBottom: 10,
     borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.07,
+    shadowRadius: 6,
+    elevation: 2,
   },
   userBubble: {
     alignSelf: 'flex-end',
-    borderBottomRightRadius: 6,
+    borderBottomRightRadius: 4,
   },
   aiBubble: {
     alignSelf: 'flex-start',
-    borderBottomLeftRadius: 6,
+    borderBottomLeftRadius: 4,
   },
   messageText: {
     fontSize: 15,

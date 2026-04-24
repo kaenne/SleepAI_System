@@ -3,10 +3,10 @@ import { router } from "expo-router";
 import * as React from "react";
 import {
     Pressable,
-    ScrollView,
     StyleSheet,
     TextInput,
     View,
+    Dimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, {
@@ -14,7 +14,9 @@ import Animated, {
     FadeInDown,
     FadeInUp,
 } from "react-native-reanimated";
+import { BlurView } from 'expo-blur';
 
+import ParallaxScrollView from "@/components/parallax-scroll-view";
 import { SleepTimer } from "@/components/sleep-timer";
 import { StressMonitor } from "@/components/stress-monitor";
 import { ThemedText } from "@/components/themed-text";
@@ -30,13 +32,15 @@ import { generateInsight, useSleepJournal } from "@/hooks/use-sleep-journal";
 import { useThemeColor } from "@/hooks/use-theme-color";
 import { api } from "@/services/api";
 
+const { width } = Dimensions.get('window');
+
 const AI_TIPS = [
-  "рџЊ™ РџРѕРїСЂРѕР±СѓР№С‚Рµ Р»РµС‡СЊ РЅР° 15 РјРёРЅСѓС‚ СЂР°РЅСЊС€Рµ. Р’Р°С€Рµ С‚РµР»Рѕ СЃРєР°Р¶РµС‚ СЃРїР°СЃРёР±Рѕ!",
-  "рџ›Ѓ РўС‘РїР»Р°СЏ РІР°РЅРЅР° РїРµСЂРµРґ СЃРЅРѕРј РїРѕРјРѕРіР°РµС‚ РѕСЂРіР°РЅРёР·РјСѓ РЅР°СЃС‚СЂРѕРёС‚СЊСЃСЏ РЅР° РѕС‚РґС‹С…",
-  "рџ“µ РЈР±РµСЂРёС‚Рµ СЌРєСЂР°РЅС‹ Р·Р° 30 РјРёРЅСѓС‚ РґРѕ СЃРЅР° РґР»СЏ Р»СѓС‡С€РµРіРѕ РєР°С‡РµСЃС‚РІР°",
-  "вќ„пёЏ РџСЂРѕС…Р»Р°РґРЅР°СЏ СЃРїР°Р»СЊРЅСЏ (18-20В°C) вЂ” Р·Р°Р»РѕРі РєСЂРµРїРєРѕРіРѕ СЃРЅР°",
-  "вЏ° РџРѕСЃС‚РѕСЏРЅРЅС‹Р№ СЂРµР¶РёРј СЃРЅР° РїРѕРјРѕРіР°РµС‚ СЂРµРіСѓР»РёСЂРѕРІР°С‚СЊ С†РёСЂРєР°РґРЅС‹Рµ СЂРёС‚РјС‹",
-  "рџ§ РљРѕСЂРѕС‚РєР°СЏ РјРµРґРёС‚Р°С†РёСЏ РїРµСЂРµРґ СЃРЅРѕРј СѓСЃРїРѕРєРѕРёС‚ РІР°С€ СЂР°Р·СѓРј",
+  "?? опробуйте лечь на 15 минут раньше. аше тело скажет спасибо!",
+  "?? Тёплая ванна перед сном помогает организму настроиться на отдых",
+  "?? берите экраны за 30 минут до сна для лучшего качества",
+  "?? рохладная спальня (18-20°C) — залог крепкого сна",
+  "? остоянный режим сна помогает регулировать циркадные ритмы",
+  "?? ороткая медитация перед сном успокоит ваш разум",
 ];
 
 export default function HomeScreen() {
@@ -53,17 +57,15 @@ export default function HomeScreen() {
   const [showAddEntry, setShowAddEntry] = React.useState(false);
   const [lastInsight, setLastInsight] = React.useState<string | null>(null);
 
-  // AI Prediction State
   const [isPredicting, setIsPredicting] = React.useState(false);
   const [aiPrediction, setAiPrediction] = React.useState<{ quality: number; message: string } | null>(null);
 
   const handlePredictSleep = async () => {
     setIsPredicting(true);
     try {
-      // РџРѕРґСЃС‚Р°РІР»СЏРµРј РґР°РЅРЅС‹Рµ РёР· РїРѕР»РµР№ РІРІРѕРґР° РёР»Рё РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ
       const sleepHours = Number(sleepHoursText.replace(",", ".")) || 7.5;
       const stressLevelNum = Number(stressLevelText) || 4;
-      const heartRate = 65; // РњРѕР¶РЅРѕ Р±С‹Р»Рѕ Р±С‹ Р±СЂР°С‚СЊ РёР· HealthKit
+      const heartRate = 65; 
       
       const response = await api.predictSleepQuality({
         sleepDuration: sleepHours,
@@ -76,7 +78,7 @@ export default function HomeScreen() {
       });
     } catch (error) {
       console.error(error);
-      setAiPrediction({ quality: 0, message: "РћС€РёР±РєР° СЃРІСЏР·Рё СЃ РР" });
+      setAiPrediction({ quality: 0, message: "шибка связи с " });
     } finally {
       setIsPredicting(false);
     }
@@ -95,6 +97,7 @@ export default function HomeScreen() {
       : "needs improvement"
     : "well-rested";
   const stressLevel = latestEntry?.stressLevel ?? 3;
+  
   const currentStreak = React.useMemo(() => {
     if (entries.length === 0) return 0;
     const uniqueDays = new Set(
@@ -143,333 +146,208 @@ export default function HomeScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <LinearGradient
-        colors={[colors.headerGradientStart, colors.headerGradientEnd]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.header}
-      >
-        <SafeAreaView edges={['top']} style={{ flex: 1 }}>
-          <Animated.View
-            entering={FadeInDown.duration(500)}
-            style={styles.headerContent}
-          >
-            <View>
-              <ThemedText style={styles.greeting}>
-                Р”РѕР±СЂРѕРµ СѓС‚СЂРѕ, {user?.name?.split(" ")[0] || "Р“РѕСЃС‚СЊ"}! рџ‘‹
-              </ThemedText>
-              <ThemedText style={styles.subGreeting}>
-                РљР°Рє РІС‹ СЃРµР±СЏ С‡СѓРІСЃС‚РІСѓРµС‚Рµ СЃРµРіРѕРґРЅСЏ?
-              </ThemedText>
-            </View>
-            <Badge
-              label={backendStatus.isOnline ? "в—Џ Р’ СЃРµС‚Рё" : "в—‹ РћС„Р»Р°Р№РЅ"}
-              variant={backendStatus.isOnline ? "success" : "default"}
-              animated={false}
-            />
-          </Animated.View>
-        </SafeAreaView>
-      </LinearGradient>
-
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Sleep Timer */}
-        <Animated.View entering={FadeInUp.delay(50).duration(400)}>
-          <SleepTimer />
-        </Animated.View>
-
-        {/* Stress Monitor */}
-        <Animated.View entering={FadeInUp.delay(75).duration(400)}>
-          <StressMonitor />
-        </Animated.View>
-
-        <Animated.View
-          entering={FadeInUp.delay(100).duration(400)}
-          style={styles.quickStatsRow}
-        >
-          <Card
-            variant="elevated"
-            style={styles.quickStatCard}
-            animated={false}
-          >
-            <ThemedText style={styles.quickStatLabel}>
-              рџЊ™ РЎРѕРЅ СЃРµРіРѕРґРЅСЏ
-            </ThemedText>
-            <ThemedText style={[styles.quickStatValue, { color: colors.tint }]}>
-              {todaySleep}С‡
-            </ThemedText>
-            <ThemedText style={styles.quickStatMeta}>
-              РљР°С‡РµСЃС‚РІРѕ:{" "}
-              <ThemedText style={{ fontWeight: "600" }}>
-                {sleepQuality === 'well-rested' ? 'РҐРѕСЂРѕС€РµРµ' : 'РўСЂРµР±СѓРµС‚ РІРЅРёРјР°РЅРёСЏ'}
-              </ThemedText>
-            </ThemedText>
-            <Badge
-              label={`${currentStreak} РґРЅРµР№ РїРѕРґСЂСЏРґ`}
-              variant={currentStreak >= 5 ? "success" : "info"}
-              size="sm"
-              animated={false}
-            />
-            <Pressable onPress={() => setShowAddEntry(!showAddEntry)}>
-              <ThemedText style={[styles.viewLink, { color: colors.accent }]}>
-                {showAddEntry ? "РћС‚РјРµРЅР°" : "РћС‚РјРµС‚РёС‚СЊ СЃРѕРЅ в†’"}
-              </ThemedText>
-            </Pressable>
-          </Card>
-          <Card
-            variant="elevated"
-            style={styles.quickStatCard}
-            animated={false}
-          >
-            <ThemedText style={styles.quickStatLabel}>
-              рџЋЇ РЎС‚СЂРµСЃСЃ Рё РџСѓР»СЊСЃ
-            </ThemedText>
-            <ThemedText
-              style={[
-                styles.stressValue,
-                { color: stressLevel <= 4 ? colors.success : colors.warning },
-              ]}
-            >
-              {stressLevel <= 4 ? "РќРёР·РєРёР№" : stressLevel <= 6 ? "РЎСЂРµРґРЅРёР№" : "Р’С‹СЃРѕРєРёР№"}
-            </ThemedText>
-            <ThemedText style={styles.quickStatMeta}>
-              РџСѓР»СЊСЃ:{" "}
-              <ThemedText style={{ fontWeight: "600", color: colors.danger }}>
-                68 СѓРґ/РјРёРЅ
-              </ThemedText>
-            </ThemedText>
-          </Card>
-        </Animated.View>
-
-        <Animated.View entering={FadeInUp.delay(150).duration(400)}>
-          <Card variant="default" animated={false}>
-            <View style={styles.quickActionsRow}>
-              <Pressable
-                onPress={() => router.push("/(tabs)/stats")}
-                style={[styles.quickActionBtn, { borderColor: colors.cardBorder }]}
-              >
-                <ThemedText style={styles.quickActionEmoji}>рџ“€</ThemedText>
-                <ThemedText type="caption">РђРЅР°Р»РёС‚РёРєР°</ThemedText>
-              </Pressable>
-              <Pressable
-                onPress={() => router.push("/modal")}
-                style={[styles.quickActionBtn, { borderColor: colors.cardBorder }]}
-              >
-                <ThemedText style={styles.quickActionEmoji}>рџ“ќ</ThemedText>
-                <ThemedText type="caption">Р”РЅРµРІРЅРёРє</ThemedText>
-              </Pressable>
-              <Pressable
-                onPress={() => setShowAddEntry((v) => !v)}
-                style={[styles.quickActionBtn, { borderColor: colors.cardBorder }]}
-              >
-                <ThemedText style={styles.quickActionEmoji}>вљЎ</ThemedText>
-                <ThemedText type="caption">Р‘С‹СЃС‚СЂРѕ</ThemedText>
-              </Pressable>
-            </View>
-          </Card>
-        </Animated.View>
-
-        {showAddEntry && (
-          <Animated.View entering={FadeIn.duration(300)}>
-            <Card variant="elevated" animationDelay={0}>
-              <ThemedText type="subtitle">рџ“ќ Р”РѕР±Р°РІРёС‚СЊ Р·Р°РїРёСЃСЊ</ThemedText>
-              <View style={styles.inputRow}>
-                <View style={styles.inputField}>
-                  <ThemedText type="caption">Р§Р°СЃРѕРІ СЃРЅР°</ThemedText>
-                  <TextInput
-                    value={sleepHoursText}
-                    onChangeText={setSleepHoursText}
-                    keyboardType="decimal-pad"
-                    placeholder="7.5"
-                    placeholderTextColor={iconColor}
-                    style={[
-                      styles.input,
-                      {
-                        color: textColor,
-                        borderColor: colors.inputBorder,
-                        backgroundColor: colors.inputBackground,
-                      },
-                    ]}
-                  />
-                </View>
-                <View style={styles.inputField}>
-                  <ThemedText type="caption">РЎС‚СЂРµСЃСЃ (1-10)</ThemedText>
-                  <TextInput
-                    value={stressLevelText}
-                    onChangeText={setStressLevelText}
-                    keyboardType="number-pad"
-                    placeholder="4"
-                    placeholderTextColor={iconColor}
-                    style={[
-                      styles.input,
-                      {
-                        color: textColor,
-                        borderColor: colors.inputBorder,
-                        backgroundColor: colors.inputBackground,
-                      },
-                    ]}
-                  />
-                </View>
+      <ParallaxScrollView
+        headerBackgroundColor={{ light: colors.headerGradientStart, dark: colors.headerGradientEnd }}
+        headerImage={
+          <SafeAreaView edges={['top']} style={styles.headerSafeArea}>
+            <Animated.View entering={FadeInDown.springify()} style={styles.headerContent}>
+              <View style={styles.headerTextContainer}>
+                <ThemedText style={styles.greeting}>
+                  оброе утро, {user?.name?.split(" ")[0] || "ость"}! ??
+                </ThemedText>
+                <ThemedText style={styles.subGreeting}>
+                  ак вы себя чувствуете сегодня?
+                </ThemedText>
               </View>
-              <Button title="РЎРѕС…СЂР°РЅРёС‚СЊ" onPress={onSave} variant="primary" />
-              <View style={{ marginTop: 8 }}>
-                <Button 
-                  title={isPredicting ? "Р—Р°РіСЂСѓР·РєР° РР..." : "рџ’Ў РђРЅР°Р»РёР·РёСЂРѕРІР°С‚СЊ РР"} 
-                  onPress={handlePredictSleep} 
-                  variant="outlined" 
-                  disabled={isPredicting}
-                />
+              <View style={styles.headerBadgeContainer}>
+                <BlurView intensity={20} tint={colorScheme === 'dark' ? 'dark' : 'light'} style={styles.glassBadge}>
+                  <View style={[styles.statusDot, { backgroundColor: backendStatus.isOnline ? '#4ade80' : '#f87171' }]} />
+                  <ThemedText style={styles.statusText}>
+                    {backendStatus.isOnline ? " сети" : "флайн"}
+                  </ThemedText>
+                </BlurView>
               </View>
+            </Animated.View>
+          </SafeAreaView>
+        }
+      >
+        <View style={styles.contentContainer}>
+          <Animated.View entering={FadeInUp.delay(50).springify()}>
+            <BlurView intensity={colorScheme === 'dark' ? 40 : 80} tint={colorScheme === 'dark' ? 'dark' : 'light'} style={styles.glassActionsRow}>
+              <Pressable onPress={() => router.push("/(tabs)/stats")} style={styles.glassActionBtn}>
+                <View style={[styles.iconCircle, { backgroundColor: `${colors.tint}20` }]}>
+                  <IconSymbol name="chart.bar.fill" size={22} color={colors.tint} />
+                </View>
+                <ThemedText type="caption" style={styles.actionText}>налитика</ThemedText>
+              </Pressable>
               
-              {aiPrediction !== null && (
-                <Animated.View entering={FadeIn.duration(400)} style={{ marginTop: Spacing.md, padding: 12, backgroundColor: 'rgba(92, 196, 172, 0.15)', borderRadius: BorderRadius.md, borderWidth: 1, borderColor: colors.tint }}>
-                  <ThemedText style={{ fontSize: 16, fontWeight: 'bold', color: colors.tint, textAlign: 'center' }}>
-                    рџ¤– РћС†РµРЅРєР° РР: {aiPrediction.quality}/10
-                  </ThemedText>
-                  <ThemedText style={{ fontSize: 13, textAlign: 'center', marginTop: 4, opacity: 0.8 }}>
-                    {aiPrediction.message}
-                  </ThemedText>
-                </Animated.View>
-              )}
-            </Card>
-          </Animated.View>
-        )}
-
-        <Animated.View entering={FadeInUp.delay(200).duration(400)}>
-          <Card
-            variant="elevated"
-            style={[styles.tipCard, { backgroundColor: colors.tint }]}
-            animated={false}
-          >
-            <ThemedText style={styles.tipTitle}>
-              рџ§  AI-СЃРѕРІРµС‚ РґРЅСЏ
-            </ThemedText>
-            <ThemedText style={styles.tipText}>{todayTip}</ThemedText>
-          </Card>
-        </Animated.View>
-
-        {lastInsight && (
-          <Animated.View entering={FadeIn.duration(300)}>
-            <Card variant="default">
-              <ThemedText type="subtitle">рџ’Ў РџРѕСЃР»РµРґРЅРёР№ РёРЅСЃР°Р№С‚ РѕС‚ AI</ThemedText>
-              <ThemedText>{lastInsight}</ThemedText>
-            </Card>
-          </Animated.View>
-        )}
-
-        <Animated.View entering={FadeInUp.delay(300).duration(400)}>
-          <Card variant="default">
-            <ThemedText type="subtitle">рџ“Љ Р’Р°С€Р° СЃС‚Р°С‚РёСЃС‚РёРєР°</ThemedText>
-            <View style={styles.statsGrid}>
-              <View style={styles.statItem}>
-                <IconSymbol name="moon.fill" size={24} color={colors.tint} />
-                <ThemedText style={styles.statValue}>
-                  {stats.avgSleepHours ?? "-"}С‡
-                </ThemedText>
-                <ThemedText type="caption">РЎСЂ. СЃРѕРЅ</ThemedText>
-              </View>
-              <View style={styles.statItem}>
-                <IconSymbol name="heart.fill" size={24} color={colors.danger} />
-                <ThemedText style={styles.statValue}>
-                  {stats.avgStressLevel ?? "-"}
-                </ThemedText>
-                <ThemedText type="caption">РЎСЂ. СЃС‚СЂРµСЃСЃ</ThemedText>
-              </View>
-              <View style={styles.statItem}>
-                <IconSymbol name="calendar" size={24} color={colors.accent} />
-                <ThemedText style={styles.statValue}>{stats.count}</ThemedText>
-                <ThemedText type="caption">Р—Р°РїРёСЃРµР№</ThemedText>
-              </View>
-            </View>
-          </Card>
-        </Animated.View>
-
-        <Animated.View entering={FadeInUp.delay(400).duration(400)}>
-          <Card variant="outlined">
-            <View style={styles.recentLogsHeader}>
-              <ThemedText type="subtitle">рџ“… РќРµРґР°РІРЅРёРµ Р·Р°РїРёСЃРё</ThemedText>
-              <Pressable onPress={() => router.push("/modal")}>
-                <ThemedText style={[styles.addLogLink, { color: colors.tint }]}>
-                  + Р”РѕР±Р°РІРёС‚СЊ
-                </ThemedText>
+              <View style={styles.divider} />
+              
+              <Pressable onPress={() => router.push("/modal")} style={styles.glassActionBtn}>
+                <View style={[styles.iconCircle, { backgroundColor: `${colors.accent}20` }]}>
+                  <IconSymbol name="book.fill" size={22} color={colors.accent} />
+                </View>
+                <ThemedText type="caption" style={styles.actionText}>невник</ThemedText>
               </Pressable>
-            </View>
-            {entries.length === 0 ? (
-              <View style={styles.emptyState}>
-                <ThemedText style={styles.emptyEmoji}>рџґ</ThemedText>
-                <ThemedText type="caption">
-                  РџРѕРєР° РЅРµС‚ Р·Р°РїРёСЃРµР№. РќР°С‡РЅРёС‚Рµ РІРµСЃС‚Рё РґРЅРµРІРЅРёРє!
-                </ThemedText>
-                <Pressable
-                  onPress={() => router.push("/modal")}
-                  style={[
-                    styles.logFirstButton,
-                    { backgroundColor: colors.tint },
-                  ]}
-                >
-                  <ThemedText style={styles.logFirstButtonText}>
-                    рџ“ќ Log Your First Night
-                  </ThemedText>
-                </Pressable>
-              </View>
-            ) : (
-              entries.slice(0, 5).map((e) => (
-                <View
-                  key={e.id}
-                  style={[
-                    styles.entryRow,
-                    { borderTopColor: colors.cardBorder },
-                  ]}
-                >
-                  <View style={styles.entryLeft}>
-                    <ThemedText type="defaultSemiBold">
-                      {new Date(e.createdAt).toLocaleDateString("en-GB", {
-                        day: "2-digit",
-                        month: "short",
-                      })}
-                    </ThemedText>
-                    {e.note ? (
-                      <ThemedText type="caption" numberOfLines={1}>
-                        {e.note}
-                      </ThemedText>
-                    ) : null}
+
+              <View style={styles.divider} />
+              
+              <Pressable onPress={() => setShowAddEntry((v) => !v)} style={styles.glassActionBtn}>
+                <View style={[styles.iconCircle, { backgroundColor: `${colors.success}20` }]}>
+                  <IconSymbol name="plus.circle.fill" size={22} color={colors.success} />
+                </View>
+                <ThemedText type="caption" style={styles.actionText}>аписать</ThemedText>
+              </Pressable>
+            </BlurView>
+          </Animated.View>
+
+          {showAddEntry && (
+            <Animated.View entering={FadeIn.duration(300)}>
+              <Card variant="elevated" style={styles.premiumCard}>
+                <View style={styles.cardHeaderRow}>
+                  <View style={[styles.cardIconWrapper, { backgroundColor: `${colors.tint}20` }]}>
+                     <IconSymbol name="moon.stars.fill" size={20} color={colors.tint} />
                   </View>
-                  <View style={styles.entryBadges}>
-                    <Badge
-                      label={`${e.sleepHours}h`}
-                      variant="info"
-                      size="sm"
-                      animated={false}
-                    />
-                    <Badge
-                      label={
-                        e.stressLevel <= 4
-                          ? "Low"
-                          : e.stressLevel <= 6
-                            ? "Med"
-                            : "High"
-                      }
-                      variant={
-                        e.stressLevel <= 4
-                          ? "success"
-                          : e.stressLevel <= 6
-                            ? "warning"
-                            : "danger"
-                      }
-                      size="sm"
-                      animated={false}
+                  <ThemedText type="subtitle" style={{flex:1}}>апись сна</ThemedText>
+                </View>
+                
+                <View style={styles.inputRow}>
+                  <View style={styles.inputField}>
+                    <ThemedText type="caption" style={styles.inputLabel}>асов сна</ThemedText>
+                    <View style={[styles.inputContainer, { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder }]}>
+                      <TextInput
+                        value={sleepHoursText}
+                        onChangeText={setSleepHoursText}
+                        keyboardType="decimal-pad"
+                        placeholder="7.5"
+                        placeholderTextColor={iconColor}
+                        style={[styles.input, { color: textColor }]}
+                      />
+                      <ThemedText style={{color: iconColor, paddingRight: 10}}>ч</ThemedText>
+                    </View>
+                  </View>
+                  <View style={styles.inputField}>
+                    <ThemedText type="caption" style={styles.inputLabel}>Стресс (1-10)</ThemedText>
+                    <View style={[styles.inputContainer, { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder }]}>
+                      <TextInput
+                        value={stressLevelText}
+                        onChangeText={setStressLevelText}
+                        keyboardType="number-pad"
+                        placeholder="4"
+                        placeholderTextColor={iconColor}
+                        style={[styles.input, { color: textColor }]}
+                      />
+                      <IconSymbol name="bolt.heart.fill" size={16} color={iconColor} style={{paddingRight: 10}} />
+                    </View>
+                  </View>
+                </View>
+                
+                <View style={styles.buttonRow}>
+                  <View style={{flex:1}}>
+                    <Button title="Сохранить" onPress={onSave} variant="primary" />
+                  </View>
+                  <View style={{flex:1}}>
+                    <Button 
+                      title={isPredicting ? "нализ..." : "AI нализ"} 
+                      onPress={handlePredictSleep} 
+                      variant="secondary" 
+                      disabled={isPredicting}
                     />
                   </View>
                 </View>
-              ))
-            )}
-          </Card>
-        </Animated.View>
-        <View style={{ height: 32 }} />
-      </ScrollView>
+                
+                {aiPrediction !== null && (
+                  <Animated.View entering={FadeInDown.springify()} style={[styles.aiPredictionBox, { borderColor: `${colors.tint}50`, backgroundColor: `${colors.tint}10` }]}>
+                    <View style={{flexDirection: 'row', alignItems: 'center', marginBottom: 6, gap: 6}}>
+                      <IconSymbol name="sparkles" size={16} color={colors.tint} />
+                      <ThemedText style={{ fontSize: 15, fontWeight: 'bold', color: colors.tint }}>
+                        ценка качества: {aiPrediction.quality}/10
+                      </ThemedText>
+                    </View>
+                    <ThemedText style={{ fontSize: 13, opacity: 0.9, lineHeight: 18 }}>
+                      {aiPrediction.message}
+                    </ThemedText>
+                  </Animated.View>
+                )}
+              </Card>
+            </Animated.View>
+          )}
+
+          <Animated.View entering={FadeInUp.delay(100).springify()}>
+            <SleepTimer />
+          </Animated.View>
+
+          <Animated.View entering={FadeInUp.delay(150).springify()}>
+            <StressMonitor />
+          </Animated.View>
+
+          <Animated.View entering={FadeInUp.delay(200).springify()} style={styles.statsRow}>
+            <LinearGradient
+              colors={[colorScheme === 'dark' ? '#1e1b4b' : '#e0e7ff', colorScheme === 'dark' ? '#312e81' : '#c7d2fe']}
+              style={styles.gradientCard}
+              start={{x:0, y:0}} end={{x:1, y:1}}
+            >
+              <View style={styles.cardIconWrapperAbsolute}>
+                <IconSymbol name="moon.fill" size={40} color={`${colors.tint}20`} />
+              </View>
+              <ThemedText style={styles.quickStatLabel}>Сон сегодня</ThemedText>
+              <ThemedText style={[styles.quickStatValue, { color: colors.tint }]}>{todaySleep}ч</ThemedText>
+              <View style={styles.badgeRow}>
+                <Badge label={sleepQuality === 'well-rested' ? 'тлично' : 'Слабо'} variant={sleepQuality === 'well-rested' ? 'success' : 'warning'} size="sm" animated={false} />
+                <Badge label={`?? ${currentStreak} дн.`} variant="info" size="sm" animated={false} />
+              </View>
+            </LinearGradient>
+
+            <LinearGradient
+              colors={[colorScheme === 'dark' ? '#450a0a' : '#ffe4e6', colorScheme === 'dark' ? '#7f1d1d' : '#fecdd3']}
+              style={styles.gradientCard}
+              start={{x:0, y:0}} end={{x:1, y:1}}
+            >
+              <View style={styles.cardIconWrapperAbsolute}>
+                <IconSymbol name="heart.fill" size={40} color={`${colors.danger}20`} />
+              </View>
+              <ThemedText style={styles.quickStatLabel}>Стресс</ThemedText>
+              <ThemedText style={[styles.quickStatValue, { color: colors.danger }]}>
+                {stressLevel <= 4 ? "изкий" : stressLevel <= 6 ? "Средний" : "ысокий"}
+              </ThemedText>
+              <View style={styles.badgeRow}>
+                <Badge label="?? 68 уд/м" variant="default" size="sm" animated={false} />
+              </View>
+            </LinearGradient>
+          </Animated.View>
+
+          <Animated.View entering={FadeInUp.delay(250).springify()}>
+            <Card variant="elevated" style={styles.premiumCard}>
+              <View style={{flexDirection: 'row', alignItems: 'center', marginBottom: 12, gap: 8}}>
+                <View style={[styles.cardIconWrapper, { backgroundColor: `${colors.accent}20` }]}>
+                  <IconSymbol name="sparkles" size={18} color={colors.accent} />
+                </View>
+                <ThemedText style={{fontSize: 16, fontWeight: '700'}}>AI-совет дня</ThemedText>
+              </View>
+              <ThemedText style={{fontSize: 15, lineHeight: 22, color: colors.textSecondary}}>
+                {todayTip}
+              </ThemedText>
+            </Card>
+          </Animated.View>
+
+          {lastInsight && (
+            <Animated.View entering={FadeIn.duration(300)}>
+              <Card variant="elevated" style={styles.premiumCard}>
+                <View style={{flexDirection: 'row', alignItems: 'center', marginBottom: 12, gap: 8}}>
+                  <View style={[styles.cardIconWrapper, { backgroundColor: `${colors.success}20` }]}>
+                    <IconSymbol name="bolt.fill" size={18} color={colors.success} />
+                  </View>
+                  <ThemedText style={{fontSize: 16, fontWeight: '700'}}>нсайт от AI</ThemedText>
+                </View>
+                <ThemedText style={{fontSize: 15, lineHeight: 22, color: colors.textSecondary}}>
+                  {lastInsight}
+                </ThemedText>
+              </Card>
+            </Animated.View>
+          )}
+
+        </View>
+      </ParallaxScrollView>
 
       {/* Floating Action Button */}
       <Animated.View
@@ -480,7 +358,7 @@ export default function HomeScreen() {
           onPress={() => router.push("/modal")}
           style={({ pressed }) => [
             styles.fab,
-            { backgroundColor: colors.tint, opacity: pressed ? 0.8 : 1 },
+            { backgroundColor: colors.tint, opacity: pressed ? 0.8 : 1, transform: [{ scale: pressed ? 0.95 : 1 }] },
           ]}
         >
           <IconSymbol name="plus" size={28} color="#FFFFFF" />
@@ -492,119 +370,210 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: {
-    paddingTop: 20,
-    paddingBottom: 30,
+  headerSafeArea: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    paddingBottom: 40,
     paddingHorizontal: Spacing.lg,
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
   },
   headerContent: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    paddingTop: 40,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+  },
+  headerTextContainer: {
+    flex: 1,
+    paddingRight: 16,
   },
   greeting: {
-    fontSize: 26,
-    fontWeight: "700",
-    color: "#FFFFFF",
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
     marginBottom: 4,
+    textShadowColor: 'rgba(0,0,0,0.2)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
   },
-  subGreeting: { fontSize: 14, color: "rgba(255,255,255,0.8)" },
-  scrollView: { flex: 1, marginTop: -20 },
-  scrollContent: { padding: Spacing.md },
-  quickStatsRow: {
+  subGreeting: {
+    fontSize: 15,
+    color: 'rgba(255,255,255,0.9)',
+    fontWeight: '500',
+  },
+  headerBadgeContainer: {
+    paddingBottom: 4,
+  },
+  glassBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 6,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  contentContainer: {
+    paddingTop: Spacing.sm,
+    gap: Spacing.lg,
+    paddingBottom: 100,
+  },
+  glassActionsRow: {
+    flexDirection: 'row',
+    borderRadius: 24,
+    paddingVertical: 16,
+    paddingHorizontal: 8,
+    justifyContent: 'space-evenly',
+    alignItems: 'center',
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(150,150,150,0.1)',
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 5,
+  },
+  glassActionBtn: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
+  },
+  iconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  actionText: {
+    fontWeight: '600',
+  },
+  divider: {
+    width: 1,
+    height: '60%',
+    backgroundColor: 'rgba(150,150,150,0.2)',
+  },
+  premiumCard: {
+    borderRadius: 24,
+    padding: Spacing.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(150,150,150,0.1)',
+  },
+  cardHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: Spacing.md,
+    gap: Spacing.sm,
+  },
+  cardIconWrapper: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  inputRow: {
     flexDirection: "row",
     gap: Spacing.md,
     marginBottom: Spacing.md,
   },
-  quickStatCard: { flex: 1, padding: Spacing.md },
-  quickStatLabel: { fontSize: 13, fontWeight: "600", marginBottom: 8 },
-  quickStatValue: { fontSize: 28, fontWeight: "700", marginBottom: 4 },
-  quickStatMeta: { fontSize: 12, opacity: 0.7, marginBottom: 8 },
-  stressValue: { fontSize: 20, fontWeight: "700", marginBottom: 4 },
-  viewLink: { fontSize: 13, fontWeight: "600" },
-  inputRow: { flexDirection: "row", gap: Spacing.md },
-  inputField: { flex: 1, gap: 4 },
-  input: {
-    borderWidth: 1.5,
-    borderRadius: BorderRadius.md,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm + 2,
-    fontSize: 16,
+  inputField: { flex: 1 },
+  inputLabel: {
+    marginBottom: 6,
+    fontWeight: '500',
+    opacity: 0.8,
   },
-  tipCard: { marginBottom: Spacing.md },
-  tipTitle: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#FFFFFF",
-    marginBottom: 8,
-  },
-  tipText: { fontSize: 15, color: "#FFFFFF", lineHeight: 22 },
-  statsGrid: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    paddingVertical: Spacing.sm,
-  },
-  quickActionsRow: {
-    flexDirection: "row",
-    gap: Spacing.sm,
-    justifyContent: "space-between",
-  },
-  quickActionBtn: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     borderWidth: 1,
     borderRadius: BorderRadius.md,
-    paddingVertical: Spacing.sm + 2,
-    gap: 4,
+    overflow: 'hidden',
   },
-  quickActionEmoji: {
-    fontSize: 18,
+  input: {
+    flex: 1,
+    height: 46,
+    paddingHorizontal: Spacing.md,
+    fontSize: 16,
+    fontWeight: '500',
   },
-  statItem: { alignItems: "center", gap: 4 },
-  statValue: { fontSize: 22, fontWeight: "700" },
-  recentLogsHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: Spacing.sm,
+  buttonRow: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+    marginTop: Spacing.xs,
   },
-  addLogLink: { fontSize: 14, fontWeight: "600" },
-  emptyState: { alignItems: "center", paddingVertical: Spacing.lg },
-  emptyEmoji: { fontSize: 48, marginBottom: Spacing.sm },
-  logFirstButton: {
+  aiPredictionBox: {
     marginTop: Spacing.md,
-    paddingVertical: Spacing.sm + 2,
-    paddingHorizontal: Spacing.lg,
+    padding: Spacing.md,
     borderRadius: BorderRadius.md,
+    borderWidth: 1,
   },
-  logFirstButtonText: { color: "#FFFFFF", fontSize: 14, fontWeight: "600" },
-  entryRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: Spacing.sm + 2,
-    borderTopWidth: 1,
+  statsRow: {
+    flexDirection: 'row',
+    gap: Spacing.md,
   },
-  entryLeft: { flex: 1, marginRight: Spacing.sm },
-  entryBadges: { flexDirection: "row", gap: Spacing.xs },
+  gradientCard: {
+    flex: 1,
+    borderRadius: 24,
+    padding: Spacing.lg,
+    overflow: 'hidden',
+    position: 'relative',
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  cardIconWrapperAbsolute: {
+    position: 'absolute',
+    top: -10,
+    right: -10,
+    opacity: 0.5,
+  },
+  quickStatLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    opacity: 0.8,
+    marginBottom: 4,
+  },
+  quickStatValue: {
+    fontSize: 28,
+    fontWeight: '800',
+    marginBottom: 12,
+  },
+  badgeRow: {
+    flexDirection: 'row',
+    gap: 6,
+    flexWrap: 'wrap',
+  },
   fabContainer: {
     position: "absolute",
     bottom: 24,
     right: 24,
+    zIndex: 100,
   },
   fab: {
     width: 60,
     height: 60,
     borderRadius: 30,
-    alignItems: "center",
     justifyContent: "center",
+    alignItems: "center",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
     shadowRadius: 8,
     elevation: 8,
   },

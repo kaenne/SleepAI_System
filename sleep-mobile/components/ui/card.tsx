@@ -34,9 +34,11 @@ export function Card({
     },
     elevated: {
       backgroundColor: cardBg,
-      borderWidth: 0,
+      borderWidth: colorScheme === 'dark' ? 1 : 0,
+      borderColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.06)' : 'transparent',
       ...shadow,
-      shadowOpacity: shadow.shadowOpacity * 1.5,
+      shadowOpacity: shadow.shadowOpacity * 2,
+      shadowRadius: shadow.shadowRadius * 1.5,
     },
     outlined: {
       backgroundColor: 'transparent',
@@ -67,7 +69,7 @@ export function Card({
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: BorderRadius.lg,
+    borderRadius: BorderRadius.xl ?? 20,
     padding: Spacing.md,
     gap: Spacing.sm + 4,
     marginBottom: Spacing.sm + 4,

@@ -121,23 +121,22 @@ export function SleepTimer() {
     const durationHours = (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60);
     
     try {
-      // Save to backend
+      // Save to backend (best-effort)
       if (api.getBaseUrl()) {
         await api.createJournalEntry({
           createdAt: startTime.toISOString(),
           sleepHours: Math.round(durationHours * 10) / 10,
-          stressLevel: 5, // Default, user can edit later
+          stressLevel: 5,
           note: `Sleep session: ${elapsed}`,
         });
       }
-      
-      // Clear session
+    } catch (e) {
+      console.warn('Failed to save session to backend:', e);
+    } finally {
+      // Always clear session, even if backend save failed
       await AsyncStorage.removeItem(SLEEP_SESSION_KEY);
       setSession(null);
       setElapsed('00:00:00');
-    } catch (e) {
-      console.error('Failed to save session:', e);
-    } finally {
       setIsLoading(false);
     }
   }, [session, elapsed]);
@@ -156,8 +155,8 @@ export function SleepTimer() {
           size={28} 
           color={session?.isActive ? colors.accent : colors.tint} 
         />
-        <ThemedText type="subtitle" style={styles.title}>
-          {session?.isActive ? 'Сон...' : 'Таймер сна'}
+        <ThemedText type="subtitle" style={styles.title} numberOfLines={1}>
+          {session?.isActive ? 'Сон идёт 💤' : 'Таймер сна'}
         </ThemedText>
       </View>
       
@@ -233,7 +232,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.lg,
   },
   timer: {
-    fontSize: 48,
+    fontSize: 42,
     fontWeight: '700',
     fontVariant: ['tabular-nums'],
   },

@@ -25,6 +25,78 @@ import { useSleepJournal } from "@/hooks/use-sleep-journal";
 
 const screenWidth = Dimensions.get("window").width - 48; // padding
 
+// Returns last 7 day abbreviations, oldest first
+function getLast7DayLabels(): string[] {
+  const abbr = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
+  return [...Array(7)].map((_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (6 - i));
+    return abbr[d.getDay()];
+  });
+}
+
+// Sleep Score Arc shown in header
+function SleepScoreArc({
+  score,
+  size = 120,
+}: {
+  score: number;
+  size?: number;
+}) {
+  const strokeWidth = 10;
+  const radius = (size - strokeWidth) / 2;
+  // Use only top half (180°)
+  const arcLength = Math.PI * radius;
+  const filled = (Math.min(100, Math.max(0, score)) / 100) * arcLength;
+  // Arc starts at left (180°) goes to right (0°) — top half
+  // We'll use a full circumference trick
+  const circumference = 2 * Math.PI * radius;
+  const dashArray = `${filled} ${circumference - filled}`;
+  const dashOffset = circumference * 0.25; // start at top-left (90° offset)
+
+  const scoreColor =
+    score >= 80 ? "#4ADE80" : score >= 60 ? "#FBBF24" : "#F87171";
+
+  return (
+    <View style={{ width: size, height: size / 2 + 24, alignItems: "center" }}>
+      <Svg width={size} height={size} style={{ position: "absolute", top: 0 }}>
+        {/* track */}
+        <Circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke="rgba(255,255,255,0.15)"
+          strokeWidth={strokeWidth}
+          fill="transparent"
+          strokeDasharray={`${arcLength} ${circumference - arcLength}`}
+          strokeDashoffset={dashOffset}
+          strokeLinecap="round"
+        />
+        {/* fill */}
+        <Circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke={scoreColor}
+          strokeWidth={strokeWidth}
+          fill="transparent"
+          strokeDasharray={dashArray}
+          strokeDashoffset={dashOffset}
+          strokeLinecap="round"
+        />
+      </Svg>
+      <View style={{ position: "absolute", top: size / 2 - 8, alignItems: "center" }}>
+        <ThemedText style={{ fontSize: 26, fontWeight: "800", color: "#FFFFFF" }}>
+          {score}
+        </ThemedText>
+        <ThemedText style={{ fontSize: 10, color: "rgba(255,255,255,0.7)", marginTop: -2 }}>
+          / 100
+        </ThemedText>
+      </View>
+    </View>
+  );
+}
+
 // Circular Progress Component
 function CircularProgress({
   percentage,
@@ -83,14 +155,8 @@ function CircularProgress({
           { alignItems: "center", justifyContent: "center" },
         ]}
       >
-        <Badge
-          label="😴 Качество сна"
-          variant="success"
-          size="sm"
-          animated={false}
-        />
         <ThemedText style={styles.progressText}>{percentage}%</ThemedText>
-        <ThemedText style={styles.progressSubtext}>отдохнувший</ThemedText>
+        <ThemedText style={styles.progressSubtext}>качество сна</ThemedText>
       </View>
     </View>
   );
@@ -209,7 +275,7 @@ export default function СтатистикаScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Gradient Header with Circle Progress */}
       <LinearGradient
-        colors={[colors.headerGradientStart, colors.headerGradientEnd]}
+        colors={[colors.headerGradientStart, colors.headerGradientMid, colors.headerGradientEnd]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.header}
@@ -220,20 +286,12 @@ export default function СтатистикаScreen() {
             style={styles.headerContent}
           >
             <ThemedText style={styles.headerTitle}>
-              🌙 Обзор вашего сна
+              🌙 Обзор сна
             </ThemedText>
+            <SleepScoreArc score={sleepQualityPercentage} size={130} />
             <ThemedText style={styles.headerSubtitle}>
-              {"Ваша ежедневная сводка здоровья 🌙"}
+              Оценка качества сна
             </ThemedText>
-
-            <View style={styles.circleContainer}>
-              <CircularProgress
-                percentage={sleepQualityPercentage}
-                color={colors.sleepQuality}
-                size={180}
-                strokeWidth={14}
-              />
-            </View>
           </Animated.View>
         </SafeAreaView>
       </LinearGradient>
@@ -369,21 +427,27 @@ export default function СтатистикаScreen() {
         {/* Sleep Trend Chart */}
         <Animated.View entering={FadeInUp.delay(250).duration(400)}>
           <Card variant="elevated">
-            <ThemedText type="subtitle">
-              📈 Тренд сна (Последние 7 дней)
-            </ThemedText>
+            <View style={styles.chartTitleRow}>
+              <ThemedText type="subtitle">📈 Сон (7 дней)</ThemedText>
+              {recent7.length === 0 && (
+                <ThemedText style={[styles.sampleLabel, { color: colors.textSecondary }]}>пример</ThemedText>
+              )}
+            </View>
+            {recent7.length === 0 ? (
+              <View style={styles.emptyChart}>
+                <IconSymbol name="chart.line.uptrend.xyaxis" size={40} color={colors.tint} />
+                <ThemedText style={[styles.emptyChartText, { color: colors.textSecondary }]}>
+                  Добавь записи в дневник, чтобы увидеть реальный график
+                </ThemedText>
+              </View>
+            ) : (
             <View style={styles.chartContainer}>
               <LineChart
                 data={{
-                  labels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+                  labels: getLast7DayLabels(),
                   datasets: [
                     {
-                      data:
-                        recent7.length > 0
-                          ? [...Array(7)].map(
-                              (_, i) => recent7[6 - i]?.sleepHours || 0,
-                            )
-                          : [7, 6.5, 8, 7.5, 6, 8.5, 7],
+                      data: [...Array(7)].map((_, i) => recent7[6 - i]?.sleepHours || 0),
                       color: () => colors.tint,
                       strokeWidth: 3,
                     },
@@ -414,25 +478,34 @@ export default function СтатистикаScreen() {
                 withOuterLines={false}
               />
             </View>
+            )}
           </Card>
         </Animated.View>
 
         {/* Stress Level Chart */}
         <Animated.View entering={FadeInUp.delay(280).duration(400)}>
           <Card variant="elevated">
-            <ThemedText type="subtitle">😓 Тренд стресса</ThemedText>
+            <View style={styles.chartTitleRow}>
+              <ThemedText type="subtitle">😓 Стресс (7 дней)</ThemedText>
+              {recent7.length === 0 && (
+                <ThemedText style={[styles.sampleLabel, { color: colors.textSecondary }]}>пример</ThemedText>
+              )}
+            </View>
+            {recent7.length === 0 ? (
+              <View style={styles.emptyChart}>
+                <IconSymbol name="waveform.path.ecg" size={40} color={colors.accent} />
+                <ThemedText style={[styles.emptyChartText, { color: colors.textSecondary }]}>
+                  Нет данных о стрессе. Начни запись в дневнике.
+                </ThemedText>
+              </View>
+            ) : (
             <View style={styles.chartContainer}>
               <BarChart
                 data={{
-                  labels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+                  labels: getLast7DayLabels(),
                   datasets: [
                     {
-                      data:
-                        recent7.length > 0
-                          ? [...Array(7)].map(
-                              (_, i) => recent7[6 - i]?.stressLevel || 0,
-                            )
-                          : [5, 6, 4, 7, 5, 3, 4],
+                      data: [...Array(7)].map((_, i) => recent7[6 - i]?.stressLevel || 0),
                     },
                   ],
                 }}
@@ -459,6 +532,7 @@ export default function СтатистикаScreen() {
                 yAxisLabel=""
               />
             </View>
+            )}
           </Card>
         </Animated.View>
 
@@ -527,35 +601,35 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    paddingTop: 20,
-    paddingBottom: 40,
+    paddingTop: 12,
+    paddingBottom: 20,
     paddingHorizontal: Spacing.lg,
-    borderBottomLeftRadius: 40,
-    borderBottomRightRadius: 40,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
   },
   headerContent: {
-    paddingTop: 40,
+    paddingTop: 16,
     alignItems: "center",
   },
   headerTitle: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: "700",
     color: "#FFFFFF",
-    marginBottom: 4,
+    marginBottom: 2,
   },
   headerSubtitle: {
-    fontSize: 14,
+    fontSize: 13,
     color: "rgba(255,255,255,0.8)",
-    marginBottom: 24,
+    marginBottom: 12,
   },
   circleContainer: {
     marginTop: 8,
   },
   progressText: {
-    fontSize: 32,
+    fontSize: 24,
     fontWeight: "700",
     color: "#FFFFFF",
-    marginTop: 8,
+    marginTop: 4,
   },
   progressSubtext: {
     fontSize: 12,
@@ -563,7 +637,6 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
-    marginTop: -20,
   },
   scrollContent: {
     padding: Spacing.md,
@@ -667,5 +740,28 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     paddingVertical: 8,
+  },
+  chartTitleRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  sampleLabel: {
+    fontSize: 11,
+    fontWeight: "500",
+    opacity: 0.6,
+    fontStyle: "italic",
+  },
+  emptyChart: {
+    alignItems: "center",
+    paddingVertical: 32,
+    gap: 12,
+  },
+  emptyChartText: {
+    fontSize: 13,
+    textAlign: "center",
+    maxWidth: 260,
+    lineHeight: 20,
   },
 });

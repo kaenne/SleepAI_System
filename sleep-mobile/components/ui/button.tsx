@@ -1,4 +1,5 @@
 import { ActivityIndicator, Pressable, StyleSheet, type PressableProps } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
     useAnimatedStyle,
     useSharedValue,
@@ -106,6 +107,7 @@ export function Button({
           paddingVertical: currentSize.paddingVertical,
           paddingHorizontal: currentSize.paddingHorizontal,
           opacity: disabled || loading ? 0.6 : 1,
+          overflow: 'hidden',
         },
         animatedStyle,
       ]}
@@ -114,6 +116,14 @@ export function Button({
       disabled={disabled || loading}
       {...otherProps}
     >
+      {variant === 'primary' && (
+        <LinearGradient
+          colors={[colors.headerGradientStart ?? colors.tint, colors.tint]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={StyleSheet.absoluteFill}
+        />
+      )}
       {loading ? (
         <ActivityIndicator
           size="small"

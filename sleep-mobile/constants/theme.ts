@@ -28,7 +28,8 @@ export const Colors = {
     muted: '#6B7280',             // Gray-500
     accent: primaryBlue,
     // Gradient colors for headers
-    headerGradientStart: '#4F46E5', // Indigo-600
+    headerGradientStart: '#3730A3', // Indigo-800
+    headerGradientMid: '#5B21B6',   // Violet-800
     headerGradientEnd: '#7C3AED',   // Violet-600
     // Input colors
     inputBackground: '#FFFFFF',
@@ -57,7 +58,8 @@ export const Colors = {
     muted: '#9CA3AF',             // Gray-400
     accent: '#60A5FA',            // Blue-400
     // Gradient colors for headers
-    headerGradientStart: '#4338CA', // Indigo-700
+    headerGradientStart: '#3730A3', // Indigo-800
+    headerGradientMid: '#4C1D95',   // Violet-900
     headerGradientEnd: '#6D28D9',   // Violet-700
     // Input colors
     inputBackground: '#1F2937',

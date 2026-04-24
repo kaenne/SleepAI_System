@@ -3,6 +3,8 @@ import { router } from 'expo-router';
 import * as React from 'react';
 import {
     Alert,
+    Modal,
+    Platform,
     Pressable,
     SafeAreaView,
     ScrollView,
@@ -19,6 +21,8 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { BorderRadius, Colors, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useColorSchemeOverride, useTheme } from '@/contexts/theme-context';
+import { useNotifications } from '@/hooks/use-notifications';
 import { api } from '@/services/api';
 
 type SettingRowProps = {
@@ -75,15 +79,43 @@ function SettingRow({
 }
 
 export default function НастройкиScreen() {
-  const colorScheme = useColorScheme() ?? 'light';
+  const colorScheme = useColorSchemeOverride() ?? 'light';
   const colors = Colors[colorScheme];
   const { user, isAuthenticated, logout } = useAuth();
+  const { isDark, toggleTheme } = useTheme();
+  const notif = useNotifications();
 
-  const [notifications, setNotifications] = React.useState(true);
-  const [darkMode, setDarkMode] = React.useState(colorScheme === 'dark');
-  const [reminderTime] = React.useState('22:00');
   const [backendUrl, setBackendUrl] = React.useState(api.getBaseUrl() || '');
   const [showBackendInput, setShowBackendInput] = React.useState(false);
+  const [showTimePicker, setShowTimePicker] = React.useState(false);
+  const [tempHour, setTempHour] = React.useState(notif.time.hour);
+  const [tempMinute, setTempMinute] = React.useState(notif.time.minute);
+
+  // Sync temp values when modal opens
+  React.useEffect(() => {
+    if (showTimePicker) {
+      setTempHour(notif.time.hour);
+      setTempMinute(notif.time.minute);
+    }
+  }, [showTimePicker, notif.time]);
+
+  const handleNotifToggle = React.useCallback(async (value: boolean) => {
+    const ok = await notif.toggle(value);
+    if (!ok && value) {
+      Alert.alert(
+        'Разрешите уведомления',
+        'Пожалуйста, разрешите уведомления в настройках телефона.',
+      );
+    }
+  }, [notif]);
+
+  const handleSaveTime = React.useCallback(async () => {
+    await notif.updateTime({ hour: tempHour, minute: tempMinute });
+    setShowTimePicker(false);
+    if (notif.enabled) {
+      Alert.alert('Готово', `Напоминание установлено на ${String(tempHour).padStart(2,'0')}:${String(tempMinute).padStart(2,'0')} ежедневно`);
+    }
+  }, [notif, tempHour, tempMinute]);
 
   // Get user initials for avatar
   const userInitials = React.useMemo(() => {
@@ -143,7 +175,7 @@ export default function НастройкиScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
       <LinearGradient
-        colors={[colors.headerGradientStart, colors.headerGradientEnd]}
+        colors={[colors.headerGradientStart, colors.headerGradientMid, colors.headerGradientEnd]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.header}
@@ -253,31 +285,115 @@ export default function НастройкиScreen() {
               iconColor={colors.accent}
               label="🔔 Уведомления"
               hasToggle
-              toggleValue={notifications}
-              onToggle={setNotifications}
-              colors={colors}
-            />
-            <SettingRow
-              icon="moon.fill"
-              iconColor={colors.tint}
-              label="🌙 Тёмная тема"
-              hasToggle
-              toggleValue={darkMode}
-              onToggle={setDarkMode}
+              toggleValue={notif.enabled}
+              onToggle={handleNotifToggle}
               colors={colors}
             />
             <SettingRow
               icon="clock.fill"
               iconColor={colors.warning}
               label="⏰ Время напоминания"
-              value={reminderTime}
-              onPress={() => {
-                Alert.alert('Время напоминания', `Текущее: ${reminderTime}`);
-              }}
+              value={notif.timeString}
+              onPress={() => setShowTimePicker(true)}
+              colors={colors}
+            />
+            {notif.enabled && Platform.OS !== 'web' && (
+              <SettingRow
+                icon="paperplane.fill"
+                iconColor={colors.success}
+                label="✉️ Отправить тестовое уведомление"
+                onPress={notif.sendTestNotification}
+                colors={colors}
+              />
+            )}
+            <SettingRow
+              icon="moon.fill"
+              iconColor={colors.tint}
+              label="🌙 Тёмная тема"
+              hasToggle
+              toggleValue={isDark}
+              onToggle={toggleTheme}
               colors={colors}
             />
           </Card>
         </Animated.View>
+
+        {/* Time Picker Modal */}
+        <Modal
+          visible={showTimePicker}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowTimePicker(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={[styles.timePickerCard, { backgroundColor: colors.cardBackground }]}>
+              <ThemedText type="subtitle" style={styles.timePickerTitle}>⏰ Время напоминания</ThemedText>
+              <ThemedText style={[styles.timePickerSub, { color: colors.textSecondary }]}>
+                Ежедневное напоминание ложиться спать
+              </ThemedText>
+              <View style={styles.timeRow}>
+                {/* Hours */}
+                <View style={styles.timeColumn}>
+                  <Pressable
+                    style={[styles.timeBtn, { backgroundColor: colors.tint + '20' }]}
+                    onPress={() => setTempHour((h) => (h + 1) % 24)}
+                  >
+                    <IconSymbol name="chevron.up" size={20} color={colors.tint} />
+                  </Pressable>
+                  <View style={[styles.timeDisplay, { backgroundColor: colors.cardBorder }]}>
+                    <ThemedText style={[styles.timeValue, { color: colors.text }]}>
+                      {String(tempHour).padStart(2, '0')}
+                    </ThemedText>
+                  </View>
+                  <Pressable
+                    style={[styles.timeBtn, { backgroundColor: colors.tint + '20' }]}
+                    onPress={() => setTempHour((h) => (h - 1 + 24) % 24)}
+                  >
+                    <IconSymbol name="chevron.down" size={20} color={colors.tint} />
+                  </Pressable>
+                </View>
+
+                <ThemedText style={[styles.timeColon, { color: colors.text }]}>:</ThemedText>
+
+                {/* Minutes */}
+                <View style={styles.timeColumn}>
+                  <Pressable
+                    style={[styles.timeBtn, { backgroundColor: colors.tint + '20' }]}
+                    onPress={() => setTempMinute((m) => (m + 5) % 60)}
+                  >
+                    <IconSymbol name="chevron.up" size={20} color={colors.tint} />
+                  </Pressable>
+                  <View style={[styles.timeDisplay, { backgroundColor: colors.cardBorder }]}>
+                    <ThemedText style={[styles.timeValue, { color: colors.text }]}>
+                      {String(tempMinute).padStart(2, '0')}
+                    </ThemedText>
+                  </View>
+                  <Pressable
+                    style={[styles.timeBtn, { backgroundColor: colors.tint + '20' }]}
+                    onPress={() => setTempMinute((m) => (m - 5 + 60) % 60)}
+                  >
+                    <IconSymbol name="chevron.down" size={20} color={colors.tint} />
+                  </Pressable>
+                </View>
+              </View>
+
+              <View style={styles.timePickerActions}>
+                <Pressable
+                  style={[styles.timePickerBtn, { backgroundColor: colors.cardBorder }]}
+                  onPress={() => setShowTimePicker(false)}
+                >
+                  <ThemedText style={{ fontWeight: '600', color: colors.text }}>Отмена</ThemedText>
+                </Pressable>
+                <Pressable
+                  style={[styles.timePickerBtn, { backgroundColor: colors.tint }]}
+                  onPress={handleSaveTime}
+                >
+                  <ThemedText style={{ fontWeight: '700', color: '#FFFFFF' }}>Сохранить</ThemedText>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
 
         {/* Data & Sync */}
         <Animated.View entering={FadeInUp.delay(300).duration(400)}>
@@ -387,7 +503,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
   },
   headerContent: {
-    paddingTop: 40,
+    paddingTop: 24,
   },
   headerTitle: {
     fontSize: 28,
@@ -525,5 +641,75 @@ const styles = StyleSheet.create({
   signInSubtitle: {
     fontSize: 13,
     marginTop: 2,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  timePickerCard: {
+    width: 300,
+    borderRadius: 20,
+    padding: 24,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 12,
+  },
+  timePickerTitle: {
+    marginBottom: 4,
+  },
+  timePickerSub: {
+    fontSize: 13,
+    marginBottom: 24,
+    textAlign: 'center',
+  },
+  timeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 28,
+  },
+  timeColumn: {
+    alignItems: 'center',
+    gap: 10,
+  },
+  timeBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  timeDisplay: {
+    width: 72,
+    height: 64,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  timeValue: {
+    fontSize: 32,
+    fontWeight: '700',
+    fontVariant: ['tabular-nums'],
+  },
+  timeColon: {
+    fontSize: 36,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  timePickerActions: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  timePickerBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
   },
 });
