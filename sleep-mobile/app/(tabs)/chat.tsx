@@ -295,6 +295,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   messagesContent: {
+    flexGrow: 1,
+    justifyContent: 'flex-end',
     padding: Spacing.md,
     paddingBottom: 8,
   },

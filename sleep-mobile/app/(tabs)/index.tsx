@@ -306,12 +306,12 @@ export default function HomeScreen() {
               <View style={styles.cardIconWrapperAbsolute}>
                 <IconSymbol name="heart.fill" size={40} color={`${colors.danger}20`} />
               </View>
-              <ThemedText style={styles.quickStatLabel}>������</ThemedText>
+              <ThemedText style={styles.quickStatLabel}>Стресс</ThemedText>
               <ThemedText style={[styles.quickStatValue, { color: colors.danger }]}>
-                {stressLevel <= 4 ? "�����" : stressLevel <= 6 ? "�������" : "������"}
+                {stressLevel <= 4 ? "Низкий" : stressLevel <= 6 ? "Средний" : "Высокий"}
               </ThemedText>
               <View style={styles.badgeRow}>
-                <Badge label="?? 68 ��/�" variant="default" size="sm" animated={false} />
+                <Badge label="❤️ 68 уд/м" variant="default" size="sm" animated={false} />
               </View>
             </LinearGradient>
           </Animated.View>
@@ -322,7 +322,7 @@ export default function HomeScreen() {
                 <View style={[styles.cardIconWrapper, { backgroundColor: `${colors.accent}20` }]}>
                   <IconSymbol name="sparkles" size={18} color={colors.accent} />
                 </View>
-                <ThemedText style={{fontSize: 16, fontWeight: '700'}}>AI-����� ���</ThemedText>
+                <ThemedText style={{fontSize: 16, fontWeight: '700'}}>AI-совет дня</ThemedText>
               </View>
               <ThemedText style={{fontSize: 15, lineHeight: 22, color: colors.textSecondary}}>
                 {todayTip}
@@ -337,7 +337,7 @@ export default function HomeScreen() {
                   <View style={[styles.cardIconWrapper, { backgroundColor: `${colors.success}20` }]}>
                     <IconSymbol name="bolt.fill" size={18} color={colors.success} />
                   </View>
-                  <ThemedText style={{fontSize: 16, fontWeight: '700'}}>����� �� AI</ThemedText>
+                  <ThemedText style={{fontSize: 16, fontWeight: '700'}}>Инсайт от AI</ThemedText>
                 </View>
                 <ThemedText style={{fontSize: 15, lineHeight: 22, color: colors.textSecondary}}>
                   {lastInsight}

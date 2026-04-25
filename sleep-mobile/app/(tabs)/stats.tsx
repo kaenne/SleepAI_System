@@ -606,6 +606,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
+    overflow: 'hidden',
   },
   headerContent: {
     paddingTop: 16,
