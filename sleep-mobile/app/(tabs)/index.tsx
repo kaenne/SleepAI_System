@@ -1,4 +1,4 @@
-import { LinearGradient } from "expo-linear-gradient";
+п»їimport { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import * as React from "react";
 import {
@@ -35,12 +35,12 @@ import { api } from "@/services/api";
 const { width } = Dimensions.get('window');
 
 const AI_TIPS = [
-  "?? опробуйте лечь на 15 минут раньше. аше тело скажет спасибо!",
-  "?? Тёплая ванна перед сном помогает организму настроиться на отдых",
-  "?? берите экраны за 30 минут до сна для лучшего качества",
-  "?? рохладная спальня (18-20°C) — залог крепкого сна",
-  "? остоянный режим сна помогает регулировать циркадные ритмы",
-  "?? ороткая медитация перед сном успокоит ваш разум",
+  "рџ’Ў РџСЂРѕРіСѓР»РєР° РїРµСЂРµРґ СЃРЅРѕРј 15 РјРёРЅСѓС‚ СѓР»СѓС‡С€Р°РµС‚ Р·Р°СЃС‹РїР°РЅРёРµ!",
+  "рџЊ™ РўС‘РјРЅР°СЏ РєРѕРјРЅР°С‚Р° РїРµСЂРµРґ СЃРЅРѕРј РїРѕРјРѕРіР°РµС‚ РІС‹СЂР°Р±РѕС‚РєРµ РјРµР»Р°С‚РѕРЅРёРЅР°",
+  "в• РћС‚РєР°Р¶РёСЃСЊ РѕС‚ РєРѕС„Рµ Р·Р° 6 С‡Р°СЃРѕРІ РґРѕ СЃРЅР° РґР»СЏ Р»СѓС‡С€РµРіРѕ РѕС‚РґС‹С…Р°",
+  "рџЊЎпёЏ РџСЂРѕС…Р»Р°РґРЅР°СЏ С‚РµРјРїРµСЂР°С‚СѓСЂР° (18-20В°C) РІ СЃРїР°Р»СЊРЅРµ СѓР»СѓС‡С€Р°РµС‚ СЃРѕРЅ",
+  "рџ“µ РћС‚РєР»Р°РґС‹РІР°Р№ С‚РµР»РµС„РѕРЅ Р·Р° 30 РјРёРЅСѓС‚ РґРѕ СЃРЅР° РґР»СЏ РєР°С‡РµСЃС‚РІРµРЅРЅРѕРіРѕ РѕС‚РґС‹С…Р°",
+  "рџ§ РљРѕСЂРѕС‚РєР°СЏ РјРµРґРёС‚Р°С†РёСЏ РїРµСЂРµРґ СЃРЅРѕРј СЃРЅРёР·РёС‚ СѓСЂРѕРІРµРЅСЊ СЃС‚СЂРµСЃСЃР°",
 ];
 
 export default function HomeScreen() {
@@ -78,7 +78,7 @@ export default function HomeScreen() {
       });
     } catch (error) {
       console.error(error);
-      setAiPrediction({ quality: 0, message: "шибка связи с " });
+      setAiPrediction({ quality: 0, message: "РћС€РёР±РєР° Р°РЅР°Р»РёР·Р°" });
     } finally {
       setIsPredicting(false);
     }
@@ -153,17 +153,17 @@ export default function HomeScreen() {
             <Animated.View entering={FadeInDown.springify()} style={styles.headerContent}>
               <View style={styles.headerTextContainer}>
                 <ThemedText style={styles.greeting}>
-                  оброе утро, {user?.name?.split(" ")[0] || "ость"}! ??
+                  РџСЂРёРІРµС‚, {user?.name?.split(" ")[0] || "РґСЂСѓРі"}! рџ‘‹
                 </ThemedText>
                 <ThemedText style={styles.subGreeting}>
-                  ак вы себя чувствуете сегодня?
+                  РљР°Рє С‚С‹ СЃРїР°Р» РїСЂРѕС€Р»РѕР№ РЅРѕС‡СЊСЋ?
                 </ThemedText>
               </View>
               <View style={styles.headerBadgeContainer}>
                 <BlurView intensity={20} tint={colorScheme === 'dark' ? 'dark' : 'light'} style={styles.glassBadge}>
                   <View style={[styles.statusDot, { backgroundColor: backendStatus.isOnline ? '#4ade80' : '#f87171' }]} />
                   <ThemedText style={styles.statusText}>
-                    {backendStatus.isOnline ? " сети" : "флайн"}
+                    {backendStatus.isOnline ? " РћРЅР»Р°Р№РЅ" : "РћС„С„Р»Р°Р№РЅ"}
                   </ThemedText>
                 </BlurView>
               </View>
@@ -178,7 +178,7 @@ export default function HomeScreen() {
                 <View style={[styles.iconCircle, { backgroundColor: `${colors.tint}20` }]}>
                   <IconSymbol name="chart.bar.fill" size={22} color={colors.tint} />
                 </View>
-                <ThemedText type="caption" style={styles.actionText}>налитика</ThemedText>
+                <ThemedText type="caption" style={styles.actionText}>РЎС‚Р°С‚РёСЃС‚РёРєР°</ThemedText>
               </Pressable>
               
               <View style={styles.divider} />
@@ -187,7 +187,7 @@ export default function HomeScreen() {
                 <View style={[styles.iconCircle, { backgroundColor: `${colors.accent}20` }]}>
                   <IconSymbol name="book.fill" size={22} color={colors.accent} />
                 </View>
-                <ThemedText type="caption" style={styles.actionText}>невник</ThemedText>
+                <ThemedText type="caption" style={styles.actionText}>Р”РЅРµРІРЅРёРє</ThemedText>
               </Pressable>
 
               <View style={styles.divider} />
@@ -196,7 +196,7 @@ export default function HomeScreen() {
                 <View style={[styles.iconCircle, { backgroundColor: `${colors.success}20` }]}>
                   <IconSymbol name="plus.circle.fill" size={22} color={colors.success} />
                 </View>
-                <ThemedText type="caption" style={styles.actionText}>аписать</ThemedText>
+                <ThemedText type="caption" style={styles.actionText}>Р”РѕР±Р°РІРёС‚СЊ</ThemedText>
               </Pressable>
             </BlurView>
           </Animated.View>
@@ -208,12 +208,12 @@ export default function HomeScreen() {
                   <View style={[styles.cardIconWrapper, { backgroundColor: `${colors.tint}20` }]}>
                      <IconSymbol name="moon.stars.fill" size={20} color={colors.tint} />
                   </View>
-                  <ThemedText type="subtitle" style={{flex:1}}>апись сна</ThemedText>
+                  <ThemedText type="subtitle" style={{flex:1}}>Р—Р°РїРёСЃСЊ СЃРЅР°</ThemedText>
                 </View>
                 
                 <View style={styles.inputRow}>
                   <View style={styles.inputField}>
-                    <ThemedText type="caption" style={styles.inputLabel}>асов сна</ThemedText>
+                    <ThemedText type="caption" style={styles.inputLabel}>пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ</ThemedText>
                     <View style={[styles.inputContainer, { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder }]}>
                       <TextInput
                         value={sleepHoursText}
@@ -223,11 +223,11 @@ export default function HomeScreen() {
                         placeholderTextColor={iconColor}
                         style={[styles.input, { color: textColor }]}
                       />
-                      <ThemedText style={{color: iconColor, paddingRight: 10}}>ч</ThemedText>
+                      <ThemedText style={{color: iconColor, paddingRight: 10}}>С‡</ThemedText>
                     </View>
                   </View>
                   <View style={styles.inputField}>
-                    <ThemedText type="caption" style={styles.inputLabel}>Стресс (1-10)</ThemedText>
+                    <ThemedText type="caption" style={styles.inputLabel}>пїЅпїЅпїЅпїЅпїЅпїЅ (1-10)</ThemedText>
                     <View style={[styles.inputContainer, { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder }]}>
                       <TextInput
                         value={stressLevelText}
@@ -244,11 +244,11 @@ export default function HomeScreen() {
                 
                 <View style={styles.buttonRow}>
                   <View style={{flex:1}}>
-                    <Button title="Сохранить" onPress={onSave} variant="primary" />
+                    <Button title="пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ" onPress={onSave} variant="primary" />
                   </View>
                   <View style={{flex:1}}>
                     <Button 
-                      title={isPredicting ? "нализ..." : "AI нализ"} 
+                      title={isPredicting ? "пїЅпїЅпїЅпїЅпїЅ..." : "AI пїЅпїЅпїЅпїЅпїЅ"} 
                       onPress={handlePredictSleep} 
                       variant="secondary" 
                       disabled={isPredicting}
@@ -261,7 +261,7 @@ export default function HomeScreen() {
                     <View style={{flexDirection: 'row', alignItems: 'center', marginBottom: 6, gap: 6}}>
                       <IconSymbol name="sparkles" size={16} color={colors.tint} />
                       <ThemedText style={{ fontSize: 15, fontWeight: 'bold', color: colors.tint }}>
-                        ценка качества: {aiPrediction.quality}/10
+                        пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ: {aiPrediction.quality}/10
                       </ThemedText>
                     </View>
                     <ThemedText style={{ fontSize: 13, opacity: 0.9, lineHeight: 18 }}>
@@ -290,11 +290,11 @@ export default function HomeScreen() {
               <View style={styles.cardIconWrapperAbsolute}>
                 <IconSymbol name="moon.fill" size={40} color={`${colors.tint}20`} />
               </View>
-              <ThemedText style={styles.quickStatLabel}>Сон сегодня</ThemedText>
-              <ThemedText style={[styles.quickStatValue, { color: colors.tint }]}>{todaySleep}ч</ThemedText>
+              <ThemedText style={styles.quickStatLabel}>РЎРѕРЅ СЃРµРіРѕРґРЅСЏ</ThemedText>
+              <ThemedText style={[styles.quickStatValue, { color: colors.tint }]}>{todaySleep}С‡</ThemedText>
               <View style={styles.badgeRow}>
-                <Badge label={sleepQuality === 'well-rested' ? 'тлично' : 'Слабо'} variant={sleepQuality === 'well-rested' ? 'success' : 'warning'} size="sm" animated={false} />
-                <Badge label={`?? ${currentStreak} дн.`} variant="info" size="sm" animated={false} />
+                <Badge label={sleepQuality === 'well-rested' ? 'РҐРѕСЂРѕС€Рѕ' : 'РџР»РѕС…Рѕ'} variant={sleepQuality === 'well-rested' ? 'success' : 'warning'} size="sm" animated={false} />
+                <Badge label={`рџ”Ґ ${currentStreak} РґРЅ.`} variant="info" size="sm" animated={false} />
               </View>
             </LinearGradient>
 
@@ -306,12 +306,12 @@ export default function HomeScreen() {
               <View style={styles.cardIconWrapperAbsolute}>
                 <IconSymbol name="heart.fill" size={40} color={`${colors.danger}20`} />
               </View>
-              <ThemedText style={styles.quickStatLabel}>Стресс</ThemedText>
+              <ThemedText style={styles.quickStatLabel}>пїЅпїЅпїЅпїЅпїЅпїЅ</ThemedText>
               <ThemedText style={[styles.quickStatValue, { color: colors.danger }]}>
-                {stressLevel <= 4 ? "изкий" : stressLevel <= 6 ? "Средний" : "ысокий"}
+                {stressLevel <= 4 ? "пїЅпїЅпїЅпїЅпїЅ" : stressLevel <= 6 ? "пїЅпїЅпїЅпїЅпїЅпїЅпїЅ" : "пїЅпїЅпїЅпїЅпїЅпїЅ"}
               </ThemedText>
               <View style={styles.badgeRow}>
-                <Badge label="?? 68 уд/м" variant="default" size="sm" animated={false} />
+                <Badge label="?? 68 пїЅпїЅ/пїЅ" variant="default" size="sm" animated={false} />
               </View>
             </LinearGradient>
           </Animated.View>
@@ -322,7 +322,7 @@ export default function HomeScreen() {
                 <View style={[styles.cardIconWrapper, { backgroundColor: `${colors.accent}20` }]}>
                   <IconSymbol name="sparkles" size={18} color={colors.accent} />
                 </View>
-                <ThemedText style={{fontSize: 16, fontWeight: '700'}}>AI-совет дня</ThemedText>
+                <ThemedText style={{fontSize: 16, fontWeight: '700'}}>AI-пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ</ThemedText>
               </View>
               <ThemedText style={{fontSize: 15, lineHeight: 22, color: colors.textSecondary}}>
                 {todayTip}
@@ -337,7 +337,7 @@ export default function HomeScreen() {
                   <View style={[styles.cardIconWrapper, { backgroundColor: `${colors.success}20` }]}>
                     <IconSymbol name="bolt.fill" size={18} color={colors.success} />
                   </View>
-                  <ThemedText style={{fontSize: 16, fontWeight: '700'}}>нсайт от AI</ThemedText>
+                  <ThemedText style={{fontSize: 16, fontWeight: '700'}}>пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ AI</ThemedText>
                 </View>
                 <ThemedText style={{fontSize: 15, lineHeight: 22, color: colors.textSecondary}}>
                   {lastInsight}
