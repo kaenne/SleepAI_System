@@ -1,0 +1,111 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel superseded runs on the same ref to save minutes.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ───────────────────────── Backend (Spring Boot) ─────────────────────────
+  backend:
+    name: Backend (mvn test)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: sleep-backend
+    env:
+      # Test config — Hibernate ddl-auto=create-drop on H2 in test profile, so values are throwaway.
+      JWT_SECRET: dGVzdC1zZWNyZXQtZm9yLWNpLW9ubHktbm90LWZvci1wcm9kdWN0aW9u
+      DB_PASSWORD: ci_test_password
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Run tests
+        run: ./mvnw -B test
+
+      - name: Upload surefire reports on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-surefire-reports
+          path: sleep-backend/target/surefire-reports/
+          retention-days: 7
+
+  # ───────────────────────── AI service (FastAPI) ──────────────────────────
+  ai:
+    name: AI service (import + pytest)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: sleep-ai
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: sleep-ai/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Smoke-import main module
+        # Catches: syntax errors, missing imports, top-level config issues.
+        run: python -c "import main; print('OK')"
+        env:
+          # Disable LLM and internal token in CI — only verifies the module loads.
+          ANTHROPIC_API_KEY: ''
+          INTERNAL_API_TOKEN: ''
+
+      - name: Run pytest (if tests exist)
+        run: |
+          if compgen -G "tests/**/*.py" > /dev/null || compgen -G "test_*.py" > /dev/null; then
+            pip install pytest
+            pytest -q
+          else
+            echo "No pytest tests found — skipping."
+          fi
+
+  # ─────────────────────── Mobile (Expo / React Native) ────────────────────
+  mobile:
+    name: Mobile (tsc + jest)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: sleep-mobile
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: sleep-mobile/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: npx eslint .
+        continue-on-error: true  # ESLint warnings shouldn't block PRs yet
+
+      - name: Run Jest
+        run: npx jest --ci --silent
