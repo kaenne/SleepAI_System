@@ -1,0 +1,85 @@
+services:
+
+  db:
+    image: postgres:15-alpine
+    container_name: sleepai-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: sleep_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d sleep_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - sleepai-network
+
+  ai:
+    build:
+      context: ./sleep-ai
+    container_name: sleepai-ai
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:?INTERNAL_API_TOKEN is required}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-claude-haiku-4-5-20251001}
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 4
+      start_period: 20s
+    networks:
+      - sleepai-network
+
+  backend:
+    build:
+      context: ./sleep-backend
+    container_name: sleepai-backend
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/sleep_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-86400000}
+      AI_SERVICE_URL: http://ai:8000
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:?INTERNAL_API_TOKEN is required}
+      UPLOAD_DIR: /app/uploads
+      SWAGGER_ENABLED: "false"
+      PYTHON_SCRIPT_PATH: ""
+    volumes:
+      - uploads_data:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+      ai:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - sleepai-network
+
+volumes:
+  postgres_data:
+  uploads_data:
+
+networks:
+  sleepai-network:
+    driver: bridge
