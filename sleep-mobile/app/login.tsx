@@ -20,34 +20,57 @@ import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { BorderRadius, Colors, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
+import { useTranslation } from '@/contexts/i18n-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useGoogleAuth } from '@/hooks/use-google-auth';
+import { useResponsive } from '@/hooks/use-responsive';
+import { api } from '@/services/api';
 import { DEBUG_USE_MOCK_AUTH, getMockCredentials } from '@/services/auth';
 
 export default function LoginScreen() {
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
   const { login, isLoading, error, clearError } = useAuth();
+  const { t } = useTranslation();
+  const { rs, rf } = useResponsive();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [googleError, setGoogleError] = useState<string | null>(null);
+
+  const handleGoogleSuccess = async (accessToken: string) => {
+    setGoogleError(null);
+    try {
+      const result = await api.googleLogin(accessToken);
+      if (result?.tokens?.accessToken) {
+        // Auth context — store tokens and navigate
+        await login({ _googleToken: accessToken } as any);
+      }
+      router.replace('/(tabs)');
+    } catch (e: any) {
+      setGoogleError(e?.message ?? t('login.googleError'));
+    }
+  };
+
+  const { signIn: signInWithGoogle, isPending: googlePending, isConfigured: googleConfigured } = useGoogleAuth(handleGoogleSuccess);
 
   const validateForm = () => {
     if (!email.trim()) {
-      setValidationError('Введите email');
+      setValidationError(t('login.validate_email_empty'));
       return false;
     }
     if (!email.includes('@')) {
-      setValidationError('Введите корректный email');
+      setValidationError(t('login.validate_email_invalid'));
       return false;
     }
     if (!password) {
-      setValidationError('Введите пароль');
+      setValidationError(t('login.validate_password_empty'));
       return false;
     }
     if (password.length < 6) {
-      setValidationError('Пароль должен содержать минимум 6 символов');
+      setValidationError(t('login.validate_password_short'));
       return false;
     }
     setValidationError(null);
@@ -62,11 +85,12 @@ export default function LoginScreen() {
       await login({ email: email.trim().toLowerCase(), password });
       router.replace('/(tabs)');
     } catch (e: any) {
-      Alert.alert('Ошибка входа', e?.message || 'Проверьте данные и попробуйте снова.');
+      Alert.alert(t('login.errorTitle'), e?.message || t('login.errorFallback'));
     }
   };
 
-  const displayError = validationError || error;
+  const displayError = validationError || error || googleError;
+  const anyLoading = isLoading || googlePending;
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -85,13 +109,13 @@ export default function LoginScreen() {
               colors={[colors.headerGradientStart, colors.headerGradientEnd]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
-              style={styles.logoContainer}
+              style={[styles.logoContainer, { width: rs(100), height: rs(100), borderRadius: rs(50) }]}
             >
-              <IconSymbol name="moon.stars.fill" size={48} color="#FFFFFF" />
+              <IconSymbol name="moon.stars.fill" size={rs(48)} color="#FFFFFF" />
             </LinearGradient>
-            <ThemedText style={styles.title}>С возвращением</ThemedText>
-            <ThemedText style={[styles.subtitle, { color: colors.textSecondary }]}>
-              Войдите, чтобы продолжить
+            <ThemedText style={[styles.title, { fontSize: rf(28) }]}>{t('login.title')}</ThemedText>
+            <ThemedText style={[styles.subtitle, { color: colors.textSecondary, fontSize: rf(16) }]}>
+              {t('login.subtitle')}
             </ThemedText>
           </Animated.View>
 
@@ -100,7 +124,7 @@ export default function LoginScreen() {
             {/* Email Input */}
             <View style={styles.inputGroup}>
               <ThemedText style={[styles.label, { color: colors.textSecondary }]}>
-                Email
+                {t('login.emailLabel')}
               </ThemedText>
               <View
                 style={[
@@ -114,7 +138,7 @@ export default function LoginScreen() {
                 <IconSymbol name="envelope.fill" size={20} color={colors.muted} />
                 <TextInput
                   style={[styles.input, { color: colors.text }]}
-                    placeholder="Введите email"
+                    placeholder={t('login.emailPlaceholder')}
                   placeholderTextColor={colors.muted}
                   value={email}
                   onChangeText={(text) => {
@@ -133,7 +157,7 @@ export default function LoginScreen() {
             {/* Password Input */}
             <View style={styles.inputGroup}>
               <ThemedText style={[styles.label, { color: colors.textSecondary }]}>
-                Пароль
+                {t('login.passwordLabel')}
               </ThemedText>
               <View
                 style={[
@@ -147,7 +171,7 @@ export default function LoginScreen() {
                 <IconSymbol name="lock.fill" size={20} color={colors.muted} />
                 <TextInput
                   style={[styles.input, { color: colors.text }]}
-                    placeholder="Введите пароль"
+                    placeholder={t('login.passwordPlaceholder')}
                   placeholderTextColor={colors.muted}
                   value={password}
                   onChangeText={(text) => {
@@ -172,7 +196,7 @@ export default function LoginScreen() {
             {/* Forgot Password */}
             <Pressable style={styles.forgotPassword}>
               <ThemedText style={[styles.forgotPasswordText, { color: colors.tint }]}>
-                Забыли пароль?
+                {t('login.forgotPassword')}
               </ThemedText>
             </Pressable>
 
@@ -193,10 +217,10 @@ export default function LoginScreen() {
             <Pressable
               style={[
                 styles.loginButton,
-                { opacity: isLoading ? 0.7 : 1 },
+                { opacity: anyLoading ? 0.7 : 1 },
               ]}
               onPress={handleLogin}
-              disabled={isLoading}
+              disabled={anyLoading}
             >
               <LinearGradient
                 colors={[colors.headerGradientStart, colors.headerGradientEnd]}
@@ -207,7 +231,7 @@ export default function LoginScreen() {
                 {isLoading ? (
                   <ActivityIndicator color="#FFFFFF" />
                 ) : (
-                  <ThemedText style={styles.loginButtonText}>Войти</ThemedText>
+                  <ThemedText style={[styles.loginButtonText, { fontSize: rf(16) }]}>{t('login.submitBtn')}</ThemedText>
                 )}
               </LinearGradient>
             </Pressable>
@@ -216,7 +240,7 @@ export default function LoginScreen() {
             <View style={styles.divider}>
               <View style={[styles.dividerLine, { backgroundColor: colors.inputBorder }]} />
               <ThemedText style={[styles.dividerText, { color: colors.muted }]}>
-                или войти через
+                {t('login.orLogin')}
               </ThemedText>
               <View style={[styles.dividerLine, { backgroundColor: colors.inputBorder }]} />
             </View>
@@ -229,17 +253,34 @@ export default function LoginScreen() {
                   { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder },
                 ]}
               >
-                <IconSymbol name="apple.logo" size={24} color={colors.text} />
+                <IconSymbol name="apple.logo" size={rs(24)} color={colors.text} />
               </Pressable>
+
+              {/* Google Sign-In */}
               <Pressable
                 style={[
                   styles.socialButton,
-                  { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder },
+                  {
+                    backgroundColor: colors.inputBackground,
+                    borderColor: googleConfigured ? colors.inputBorder : colors.cardBorder,
+                    opacity: googleConfigured ? 1 : 0.45,
+                  },
                 ]}
+                onPress={signInWithGoogle}
+                disabled={!googleConfigured || anyLoading}
               >
-                <ThemedText style={styles.googleIcon}>G</ThemedText>
+                {googlePending ? (
+                  <ActivityIndicator size="small" color="#4285F4" />
+                ) : (
+                  <ThemedText style={[styles.googleIcon, { fontSize: rf(24) }]}>G</ThemedText>
+                )}
               </Pressable>
             </View>
+            {!googleConfigured && (
+              <ThemedText style={[styles.googleHint, { color: colors.muted }]}>
+                {t('login.googleNotConfigured')}
+              </ThemedText>
+            )}
 
             {/* Development Mode - Mock Credentials */}
             {DEBUG_USE_MOCK_AUTH && (
@@ -270,12 +311,12 @@ export default function LoginScreen() {
             {/* Register Link */}
             <View style={styles.registerContainer}>
               <ThemedText style={[styles.registerText, { color: colors.textSecondary }]}>
-                {"Нет аккаунта? "}
+                {t('login.noAccount')}
               </ThemedText>
               <Link href={'/register' as any} asChild replace>
                 <Pressable>
                   <ThemedText style={[styles.registerLink, { color: colors.tint }]}>
-                    Регистрация
+                    {t('login.registerLink')}
                   </ThemedText>
                 </Pressable>
               </Link>
@@ -408,6 +449,11 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '700',
     color: '#4285F4',
+  },
+  googleHint: {
+    fontSize: 11,
+    textAlign: 'center',
+    marginTop: -Spacing.sm,
   },
   mockCredentials: {
     borderWidth: 1,

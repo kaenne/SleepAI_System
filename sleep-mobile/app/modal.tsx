@@ -20,11 +20,13 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { BorderRadius, Colors, Spacing } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { generateInsight, useSleepJournal } from "@/hooks/use-sleep-journal";
+import { useTranslation } from "@/contexts/i18n-context";
 
 export default function AddSleepEntryModal() {
   const colorScheme = useColorScheme() ?? "light";
   const colors = Colors[colorScheme];
   const { addEntry } = useSleepJournal();
+  const { t } = useTranslation();
 
   const [sleepHours, setSleepHours] = React.useState(7);
   const [stressLevel, setStressLevel] = React.useState(5);
@@ -32,8 +34,8 @@ export default function AddSleepEntryModal() {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   const insight = React.useMemo(
-    () => generateInsight({ sleepHours, stressLevel }),
-    [sleepHours, stressLevel],
+    () => generateInsight({ sleepHours, stressLevel }, t),
+    [sleepHours, stressLevel, t],
   );
 
   const handleSubmit = async () => {
@@ -44,11 +46,11 @@ export default function AddSleepEntryModal() {
         stressLevel,
         note: note.trim() || undefined,
       });
-      Alert.alert("✅ Saved!", "Your sleep entry has been recorded.", [
-        { text: "OK", onPress: () => router.back() },
+      Alert.alert(t('modal.savedTitle'), t('modal.savedMsg'), [
+        { text: t('common.ok'), onPress: () => router.back() },
       ]);
     } catch (e: any) {
-      Alert.alert("Error", e?.message || "Failed to save entry");
+      Alert.alert(t('common.error'), e?.message || t('modal.errorMsg'));
     } finally {
       setIsSubmitting(false);
     }
@@ -76,10 +78,10 @@ export default function AddSleepEntryModal() {
             </Pressable>
             <View style={styles.headerText}>
               <ThemedText style={styles.headerTitle}>
-                📝 Log Your Sleep
+                {t('modal.title')}
               </ThemedText>
               <ThemedText style={styles.headerSubtitle}>
-                How did you sleep last night?
+                {t('modal.subtitle')}
               </ThemedText>
             </View>
             <View style={{ width: 40 }} />
@@ -102,7 +104,7 @@ export default function AddSleepEntryModal() {
               <View style={styles.sliderSection}>
                 <View style={styles.sliderHeader}>
                   <ThemedText style={styles.sliderLabel}>
-                    🌙 Sleep Duration
+                    {t('modal.sleepDuration')}
                   </ThemedText>
                   <ThemedText
                     style={[styles.sliderValue, { color: colors.tint }]}
@@ -147,7 +149,7 @@ export default function AddSleepEntryModal() {
               <View style={styles.sliderSection}>
                 <View style={styles.sliderHeader}>
                   <ThemedText style={styles.sliderLabel}>
-                    😓 Stress Level
+                    {t('modal.stressLevel')}
                   </ThemedText>
                   <ThemedText
                     style={[styles.sliderValue, { color: colors.accent }]}
@@ -180,12 +182,12 @@ export default function AddSleepEntryModal() {
                   <ThemedText
                     style={[styles.sliderMinMax, { color: colors.muted }]}
                   >
-                    Low
+                    {t('modal.low')}
                   </ThemedText>
                   <ThemedText
                     style={[styles.sliderMinMax, { color: colors.muted }]}
                   >
-                    High
+                    {t('modal.high')}
                   </ThemedText>
                 </View>
               </View>
@@ -196,12 +198,12 @@ export default function AddSleepEntryModal() {
           <Animated.View entering={FadeInUp.delay(300).duration(400)}>
             <Card variant="elevated">
               <ThemedText style={styles.noteLabel}>
-                📓 Notes (optional)
+                {t('modal.notesLabel')}
               </ThemedText>
               <TextInput
                 value={note}
                 onChangeText={setNote}
-                placeholder="How are you feeling? Any dreams?"
+                placeholder={t('modal.notesPlaceholder')}
                 placeholderTextColor={colors.muted}
                 multiline
                 numberOfLines={3}
@@ -225,7 +227,7 @@ export default function AddSleepEntryModal() {
                 <ThemedText style={styles.insightEmoji}>🤖</ThemedText>
                 <View style={styles.insightText}>
                   <ThemedText style={styles.insightTitle}>
-                    AI Insight
+                    {t('modal.aiInsight')}
                   </ThemedText>
                   <ThemedText style={styles.insightBody}>{insight}</ThemedText>
                 </View>
@@ -250,7 +252,7 @@ export default function AddSleepEntryModal() {
                 style={styles.submitButtonGradient}
               >
                 <ThemedText style={styles.submitButtonText}>
-                  {isSubmitting ? "Saving..." : "✨ Save Entry"}
+                  {isSubmitting ? t('modal.saving') : t('modal.saveBtn')}
                 </ThemedText>
               </LinearGradient>
             </Pressable>

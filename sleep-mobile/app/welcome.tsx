@@ -9,12 +9,14 @@ import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { BorderRadius, Colors, Spacing } from '@/constants/theme';
 import { useIsAuthenticated } from '@/contexts/auth-context';
+import { useTranslation } from '@/contexts/i18n-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export default function WelcomeScreen() {
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
   const { isAuthenticated, isLoading } = useIsAuthenticated();
+  const { t } = useTranslation();
 
   // If already authenticated, go to home
   if (!isLoading && isAuthenticated) {
@@ -55,7 +57,7 @@ export default function WelcomeScreen() {
                 <IconSymbol name="moon.stars.fill" size={64} color="#FFFFFF" />
               </View>
               <ThemedText style={styles.brandName}>SleepMind</ThemedText>
-              <ThemedText style={styles.tagline}>Ваш ИИ-тренер по сну</ThemedText>
+              <ThemedText style={styles.tagline}>{t('welcome.tagline')}</ThemedText>
             </Animated.View>
 
             {/* Features */}
@@ -65,9 +67,9 @@ export default function WelcomeScreen() {
                   <IconSymbol name="chart.line.uptrend.xyaxis" size={24} color="#FFFFFF" />
                 </View>
                 <View style={styles.featureText}>
-                  <ThemedText style={styles.featureTitle}>📊 Отслеживание сна</ThemedText>
+                  <ThemedText style={styles.featureTitle}>{t('welcome.feature1_title')}</ThemedText>
                   <ThemedText style={styles.featureDesc}>
-                    Мониторинг паттернов сна с анализом ИИ
+                    {t('welcome.feature1_desc')}
                   </ThemedText>
                 </View>
               </View>
@@ -77,9 +79,9 @@ export default function WelcomeScreen() {
                   <IconSymbol name="brain.head.profile" size={24} color="#FFFFFF" />
                 </View>
                 <View style={styles.featureText}>
-                  <ThemedText style={styles.featureTitle}>🧠 Анализ стресса</ThemedText>
+                  <ThemedText style={styles.featureTitle}>{t('welcome.feature2_title')}</ThemedText>
                   <ThemedText style={styles.featureDesc}>
-                    Понимание связи стресса и сна
+                    {t('welcome.feature2_desc')}
                   </ThemedText>
                 </View>
               </View>
@@ -89,9 +91,9 @@ export default function WelcomeScreen() {
                   <IconSymbol name="sparkles" size={24} color="#FFFFFF" />
                 </View>
                 <View style={styles.featureText}>
-                  <ThemedText style={styles.featureTitle}>✨ Персональный ИИ-тренер</ThemedText>
+                  <ThemedText style={styles.featureTitle}>{t('welcome.feature3_title')}</ThemedText>
                   <ThemedText style={styles.featureDesc}>
-                    Индивидуальные рекомендации по сну
+                    {t('welcome.feature3_desc')}
                   </ThemedText>
                 </View>
               </View>
@@ -103,7 +105,7 @@ export default function WelcomeScreen() {
                 style={styles.primaryButton}
                 onPress={() => router.push('/register' as any)}
               >
-                <ThemedText style={styles.primaryButtonText}>🚀 Начать</ThemedText>
+                <ThemedText style={styles.primaryButtonText}>{t('welcome.startBtn')}</ThemedText>
               </Pressable>
 
               <Pressable
@@ -111,7 +113,7 @@ export default function WelcomeScreen() {
                 onPress={() => router.push('/login' as any)}
               >
                 <ThemedText style={styles.secondaryButtonText}>
-                  Уже есть аккаунт? Войти
+                  {t('welcome.loginLink')}
                 </ThemedText>
               </Pressable>
 
@@ -121,7 +123,7 @@ export default function WelcomeScreen() {
                 onPress={() => router.replace('/(tabs)')}
               >
                 <ThemedText style={styles.skipButtonText}>
-                  Пропустить (Демо-режим)
+                  {t('welcome.skipBtn')}
                 </ThemedText>
               </Pressable>
             </Animated.View>

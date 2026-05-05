@@ -1,13 +1,16 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 import { mockAuthApi } from './mock-auth';
+import { type ApiError, httpRequest } from './http-client';
+export type { ApiError };
 
 const AUTH_TOKEN_KEY = 'sleepMind.authToken';
 const REFRESH_TOKEN_KEY = 'sleepMind.refreshToken';
 const USER_KEY = 'sleepMind.user';
 
-// Check if we should use mock auth (no backend configured)
-const USE_MOCK_AUTH = !process.env.EXPO_PUBLIC_API_BASE_URL || process.env.EXPO_PUBLIC_API_BASE_URL.trim() === '';
+// Mock auth is only enabled in development builds with no backend URL configured.
+// __DEV__ is always false in production APK/IPA — credentials will never appear in prod.
+const USE_MOCK_AUTH = __DEV__ && (!process.env.EXPO_PUBLIC_API_BASE_URL || process.env.EXPO_PUBLIC_API_BASE_URL.trim() === '');
 
 export type User = {
   id: string;
@@ -39,86 +42,9 @@ export type AuthResponse = {
   tokens: AuthTokens;
 };
 
-export type ApiError = {
-  message: string;
-  status?: number;
+export type AuthApiError = ApiError & {
   errors?: Record<string, string[]>;
 };
-
-function getBaseUrl(): string | null {
-  const raw = (process.env.EXPO_PUBLIC_API_BASE_URL ?? '').trim();
-  if (!raw) return null;
-  return raw.endsWith('/') ? raw.slice(0, -1) : raw;
-}
-
-function withTimeout(timeoutMs: number) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
-  return { signal: controller.signal, dispose: () => clearTimeout(timeout) };
-}
-
-async function request<T>(
-  path: string,
-  init?: RequestInit & { timeoutMs?: number }
-): Promise<T> {
-  const baseUrl = getBaseUrl();
-  if (!baseUrl) {
-    throw { message: 'API base URL is not configured (EXPO_PUBLIC_API_BASE_URL).' } as ApiError;
-  }
-
-  const url = `${baseUrl}${path.startsWith('/') ? '' : '/'}${path}`;
-  const { timeoutMs = 10000, ...rest } = init ?? {};
-  const { signal, dispose } = withTimeout(timeoutMs);
-
-  try {
-    const res = await fetch(url, {
-      ...rest,
-      signal,
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-        ...(rest.headers ?? {}),
-      },
-    });
-
-    const contentType = res.headers.get('content-type') ?? '';
-    const isJson = contentType.includes('application/json');
-
-    if (!res.ok) {
-      let error: ApiError = { message: `Request failed (${res.status})`, status: res.status };
-      try {
-        if (isJson) {
-          const data = await res.json();
-          error.message = data?.message ?? data?.error ?? error.message;
-          error.errors = data?.errors;
-        }
-      } catch {
-        // ignore
-      }
-      throw error;
-    }
-
-    if (res.status === 204) {
-      return undefined as T;
-    }
-
-    if (isJson) {
-      return (await res.json()) as T;
-    }
-
-    return (await res.text()) as unknown as T;
-  } catch (e: any) {
-    if (e?.name === 'AbortError') {
-      throw { message: 'Request timeout' } as ApiError;
-    }
-    if (e?.message && e?.status) {
-      throw e;
-    }
-    throw { message: e?.message || 'Network error' } as ApiError;
-  } finally {
-    dispose();
-  }
-}
 
 // ============ Token Storage ============
 
@@ -172,7 +98,7 @@ export const authApi = {
       return mockAuthApi.login(data.email, data.password);
     }
 
-    const response = await request<AuthResponse>('/api/auth/login', {
+    const response = await httpRequest<AuthResponse>('/api/auth/login', {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -193,7 +119,7 @@ export const authApi = {
       return mockAuthApi.register(data.name, data.email, data.password);
     }
 
-    const response = await request<AuthResponse>('/api/auth/register', {
+    const response = await httpRequest<AuthResponse>('/api/auth/register', {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -215,7 +141,7 @@ export const authApi = {
       throw { message: 'No refresh token available' } as ApiError;
     }
 
-    const tokens = await request<AuthTokens>('/api/auth/refresh', {
+    const tokens = await httpRequest<AuthTokens>('/api/auth/refresh', {
       method: 'POST',
       body: JSON.stringify({ refreshToken }),
     });
@@ -237,7 +163,7 @@ export const authApi = {
       const accessToken = await getAccessToken();
       if (accessToken) {
         // Optionally notify backend
-        await request('/api/auth/logout', {
+        await httpRequest('/api/auth/logout', {
           method: 'POST',
           headers: {
             Authorization: `Bearer ${accessToken}`,
@@ -266,7 +192,7 @@ export const authApi = {
       throw { message: 'Not authenticated' } as ApiError;
     }
 
-    const user = await request<User>('/api/auth/me', {
+    const user = await httpRequest<User>('/api/auth/me', {
       method: 'GET',
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -291,7 +217,7 @@ export const authApi = {
       throw { message: 'Not authenticated' } as ApiError;
     }
 
-    const user = await request<User>('/api/auth/profile', {
+    const user = await httpRequest<User>('/api/auth/profile', {
       method: 'PUT',
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -313,7 +239,7 @@ export const authApi = {
       throw { message: 'Not authenticated' } as ApiError;
     }
 
-    await request('/api/auth/change-password', {
+    await httpRequest('/api/auth/change-password', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -327,7 +253,7 @@ export const authApi = {
    * POST /api/auth/forgot-password
    */
   async forgotPassword(email: string): Promise<void> {
-    await request('/api/auth/forgot-password', {
+    await httpRequest('/api/auth/forgot-password', {
       method: 'POST',
       body: JSON.stringify({ email }),
     });

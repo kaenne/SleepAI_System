@@ -20,12 +20,15 @@ import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { BorderRadius, Colors, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
+import { useTranslation } from '@/contexts/i18n-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function RegisterScreen() {
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
   const { register, isLoading, error, clearError } = useAuth();
+  const { t } = useTranslation();
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -34,34 +37,40 @@ export default function RegisterScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [ageText, setAgeText] = useState('');
+  const [gender, setGender] = useState<'male' | 'female' | null>(null);
 
   const validateForm = () => {
     if (!name.trim()) {
-      setValidationError('Введите имя');
+      setValidationError(t('register.validate_name_empty'));
       return false;
     }
     if (name.trim().length < 2) {
-      setValidationError('Имя должно содержать минимум 2 символа');
+      setValidationError(t('register.validate_name_short'));
       return false;
     }
     if (!email.trim()) {
-      setValidationError('Введите email');
+      setValidationError(t('register.validate_email_empty'));
       return false;
     }
     if (!email.includes('@') || !email.includes('.')) {
-      setValidationError('Введите корректный email');
+      setValidationError(t('register.validate_email_invalid'));
       return false;
     }
     if (!password) {
-      setValidationError('Введите пароль');
+      setValidationError(t('register.validate_password_empty'));
       return false;
     }
     if (password.length < 6) {
-      setValidationError('Пароль должен содержать минимум 6 символов');
+      setValidationError(t('register.validate_password_short'));
       return false;
     }
     if (password !== confirmPassword) {
-      setValidationError('Пароли не совпадают');
+      setValidationError(t('register.validate_passwords_mismatch'));
+      return false;
+    }
+    if (ageText && (Number(ageText) < 10 || Number(ageText) > 100)) {
+      setValidationError(t('register.validate_age_invalid'));
       return false;
     }
     setValidationError(null);
@@ -78,9 +87,17 @@ export default function RegisterScreen() {
         email: email.trim().toLowerCase(),
         password,
       });
+      // Сохраняем возраст/пол локально для AI предсказаний
+      const age = ageText ? Number(ageText) : null;
+      const genderNum = gender === 'male' ? 1 : gender === 'female' ? 0 : null;
+      await AsyncStorage.setItem('sleepai_user_profile', JSON.stringify({
+        age,
+        gender: genderNum,
+        bmiCategory: null,
+      }));
       router.replace('/(tabs)');
     } catch (e: any) {
-      Alert.alert('Ошибка регистрации', e?.message || 'Попробуйте позже.');
+      Alert.alert(t('register.errorTitle'), e?.message || t('register.errorFallback'));
     }
   };
 
@@ -107,9 +124,9 @@ export default function RegisterScreen() {
             >
               <IconSymbol name="moon.stars.fill" size={48} color="#FFFFFF" />
             </LinearGradient>
-            <ThemedText style={styles.title}>Регистрация</ThemedText>
+            <ThemedText style={styles.title}>{t('register.title')}</ThemedText>
             <ThemedText style={[styles.subtitle, { color: colors.textSecondary }]}>
-              Начните путь к лучшему сну
+              {t('register.subtitle')}
             </ThemedText>
           </Animated.View>
 
@@ -118,7 +135,7 @@ export default function RegisterScreen() {
             {/* Name Input */}
             <View style={styles.inputGroup}>
               <ThemedText style={[styles.label, { color: colors.textSecondary }]}>
-                Имя
+                {t('register.nameLabel')}
               </ThemedText>
               <View
                 style={[
@@ -132,7 +149,7 @@ export default function RegisterScreen() {
                 <IconSymbol name="person.fill" size={20} color={colors.muted} />
                 <TextInput
                   style={[styles.input, { color: colors.text }]}
-                  placeholder="Введите имя"
+                  placeholder={t('register.namePlaceholder')}
                   placeholderTextColor={colors.muted}
                   value={name}
                   onChangeText={(text) => {
@@ -149,7 +166,7 @@ export default function RegisterScreen() {
             {/* Email Input */}
             <View style={styles.inputGroup}>
               <ThemedText style={[styles.label, { color: colors.textSecondary }]}>
-                Email
+                {t('register.emailLabel')}
               </ThemedText>
               <View
                 style={[
@@ -163,7 +180,7 @@ export default function RegisterScreen() {
                 <IconSymbol name="envelope.fill" size={20} color={colors.muted} />
                 <TextInput
                   style={[styles.input, { color: colors.text }]}
-                  placeholder="Введите email"
+                  placeholder={t('register.emailPlaceholder')}
                   placeholderTextColor={colors.muted}
                   value={email}
                   onChangeText={(text) => {
@@ -182,7 +199,7 @@ export default function RegisterScreen() {
             {/* Password Input */}
             <View style={styles.inputGroup}>
               <ThemedText style={[styles.label, { color: colors.textSecondary }]}>
-                Пароль
+                {t('register.passwordLabel')}
               </ThemedText>
               <View
                 style={[
@@ -198,7 +215,7 @@ export default function RegisterScreen() {
                 <IconSymbol name="lock.fill" size={20} color={colors.muted} />
                 <TextInput
                   style={[styles.input, { color: colors.text }]}
-                  placeholder="Придумайте пароль"
+                  placeholder={t('register.passwordPlaceholder')}
                   placeholderTextColor={colors.muted}
                   value={password}
                   onChangeText={(text) => {
@@ -219,14 +236,14 @@ export default function RegisterScreen() {
                 </Pressable>
               </View>
               <ThemedText style={[styles.hint, { color: colors.muted }]}>
-                Минимум 6 символов
+                {t('register.passwordHint')}
               </ThemedText>
             </View>
 
             {/* Confirm Password Input */}
             <View style={styles.inputGroup}>
               <ThemedText style={[styles.label, { color: colors.textSecondary }]}>
-                Подтвердите пароль
+                {t('register.confirmLabel')}
               </ThemedText>
               <View
                 style={[
@@ -243,7 +260,7 @@ export default function RegisterScreen() {
                 <IconSymbol name="lock.fill" size={20} color={colors.muted} />
                 <TextInput
                   style={[styles.input, { color: colors.text }]}
-                  placeholder="Повторите пароль"
+                  placeholder={t('register.confirmPlaceholder')}
                   placeholderTextColor={colors.muted}
                   value={confirmPassword}
                   onChangeText={(text) => {
@@ -264,6 +281,56 @@ export default function RegisterScreen() {
               </View>
             </View>
 
+            {/* Age Input */}
+            <View style={styles.inputGroup}>
+              <ThemedText style={[styles.label, { color: colors.textSecondary }]}>
+                {t('register.ageLabel')} <ThemedText style={[styles.hint, { color: colors.muted }]}>{t('register.optional')}</ThemedText>
+              </ThemedText>
+              <View
+                style={[
+                  styles.inputContainer,
+                  { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder },
+                ]}
+              >
+                <IconSymbol name="calendar" size={20} color={colors.muted} />
+                <TextInput
+                  style={[styles.input, { color: colors.text }]}
+                  placeholder={t('register.agePlaceholder')}
+                  placeholderTextColor={colors.muted}
+                  value={ageText}
+                  onChangeText={(t) => { setAgeText(t.replace(/[^0-9]/g, '')); setValidationError(null); }}
+                  keyboardType="numeric"
+                  maxLength={3}
+                  editable={!isLoading}
+                />
+              </View>
+            </View>
+
+            {/* Gender Select */}
+            <View style={styles.inputGroup}>
+              <ThemedText style={[styles.label, { color: colors.textSecondary }]}>
+                {t('register.genderLabel')} <ThemedText style={[styles.hint, { color: colors.muted }]}>{t('register.optional')}</ThemedText>
+              </ThemedText>
+              <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
+                {(['male', 'female'] as const).map((g) => (
+                  <Pressable
+                    key={g}
+                    onPress={() => setGender(gender === g ? null : g)}
+                    style={[
+                      styles.inputContainer,
+                      { flex: 1, justifyContent: 'center',
+                        backgroundColor: gender === g ? colors.tint + '20' : colors.inputBackground,
+                        borderColor: gender === g ? colors.tint : colors.inputBorder },
+                    ]}
+                  >
+                    <ThemedText style={{ color: gender === g ? colors.tint : colors.muted, fontWeight: gender === g ? '600' : '400' }}>
+                      {g === 'male' ? t('register.male') : t('register.female')}
+                    </ThemedText>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+
             {/* Error Message */}
             {displayError && (
               <Animated.View
@@ -279,10 +346,10 @@ export default function RegisterScreen() {
 
             {/* Terms */}
             <ThemedText style={[styles.terms, { color: colors.textSecondary }]}>
-              Создавая аккаунт, вы соглашаетесь с{' '}
-              <ThemedText style={{ color: colors.tint }}>Условиями использования</ThemedText>
-              {' и '}
-              <ThemedText style={{ color: colors.tint }}>Политикой конфиденциальности</ThemedText>
+              {t('register.terms')}
+              <ThemedText style={{ color: colors.tint }}>{t('register.termsLink')}</ThemedText>
+              {t('register.termsAnd')}
+              <ThemedText style={{ color: colors.tint }}>{t('register.privacyLink')}</ThemedText>
             </ThemedText>
 
             {/* Register Button */}
@@ -300,7 +367,7 @@ export default function RegisterScreen() {
                 {isLoading ? (
                   <ActivityIndicator color="#FFFFFF" />
                 ) : (
-                  <ThemedText style={styles.registerButtonText}>Создать аккаунт</ThemedText>
+                  <ThemedText style={styles.registerButtonText}>{t('register.submitBtn')}</ThemedText>
                 )}
               </LinearGradient>
             </Pressable>
@@ -308,12 +375,12 @@ export default function RegisterScreen() {
             {/* Login Link */}
             <View style={styles.loginContainer}>
               <ThemedText style={[styles.loginText, { color: colors.textSecondary }]}>
-                Уже есть аккаунт?{' '}
+                {t('register.hasAccount')}{' '}
               </ThemedText>
               <Link href={'/login' as any} asChild replace>
                 <Pressable>
                   <ThemedText style={[styles.loginLink, { color: colors.tint }]}>
-                    Войти
+                    {t('register.loginLink')}
                   </ThemedText>
                 </Pressable>
               </Link>

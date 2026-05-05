@@ -1,66 +1,119 @@
-// Fallback for using MaterialIcons on Android and web.
+// Android / web fallback — uses Ionicons instead of SF Symbols.
+// iOS uses icon-symbol.ios.tsx (native expo-symbols — unchanged).
+// Icon reference: https://icons.expo.fyi  (filter by Ionicons)
 
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { SymbolWeight, SymbolViewProps } from 'expo-symbols';
 import { ComponentProps } from 'react';
 import { OpaqueColorValue, type StyleProp, type TextStyle } from 'react-native';
 
-type IconMapping = Record<SymbolViewProps['name'], ComponentProps<typeof MaterialIcons>['name']>;
-type IconSymbolName = keyof typeof MAPPING;
+type IoniconsName = ComponentProps<typeof Ionicons>['name'];
+type IconMapping = Partial<Record<SymbolViewProps['name'], IoniconsName>>;
+export type IconSymbolName = keyof typeof MAPPING;
 
 /**
- * Add your SF Symbols to Material Icons mappings here.
- * - see Material Icons in the [Icons Directory](https://icons.expo.fyi).
- * - see SF Symbols in the [SF Symbols](https://developer.apple.com/sf-symbols/) app.
+ * SF Symbols → Ionicons mapping.
+ * Add new icons here when needed — see https://icons.expo.fyi for Ionicons names.
  */
 const MAPPING = {
-  // Navigation
-  'house.fill': 'home',
-  'chevron.right': 'chevron-right',
-  'chevron.left.forwardslash.chevron.right': 'code',
-  
-  // Tab bar
-  'chart.bar.fill': 'bar-chart',
-  'bubble.left.and.bubble.right.fill': 'chat',
-  'gearshape.fill': 'settings',
-  
-  // Actions
-  'paperplane.fill': 'send',
-  'arrow.up': 'arrow-upward',
-  'plus': 'add',
-  
-  // Sleep & Health
-  'moon.fill': 'nightlight-round',
-  'moon.zzz.fill': 'bedtime',
-  'heart.fill': 'favorite',
-  'waveform.path.ecg': 'monitor-heart',
-  'brain.head.profile': 'psychology',
-  'calendar': 'calendar-today',
-  
-  // Settings
-  'bell.fill': 'notifications',
-  'clock.fill': 'schedule',
-  'person.fill': 'person',
-  'person.badge.plus': 'person-add',
-  'lock.fill': 'lock',
-  'rectangle.portrait.and.arrow.right': 'logout',
-  'icloud.fill': 'cloud',
-  'arrow.triangle.2.circlepath': 'sync',
-  'trash.fill': 'delete',
-  'info.circle.fill': 'info',
-  'doc.text.fill': 'description',
-  'hand.raised.fill': 'back-hand',
-  
-  // Stats & Insights
-  'arrow.up.circle.fill': 'trending-up',
-  'star.fill': 'star',
-  'target': 'track-changes',
-} as IconMapping;
+  // ── Navigation ─────────────────────────────────────────────────────────────
+  'house.fill':                               'home',
+  'chevron.right':                            'chevron-forward',
+  'chevron.left':                             'chevron-back',
+  'chevron.up':                               'chevron-up',
+  'chevron.down':                             'chevron-down',
+  'chevron.left.forwardslash.chevron.right':  'code-slash',
+  'xmark':                                    'close',
+  'xmark.circle.fill':                        'close-circle',
+
+  // ── Tab bar ─────────────────────────────────────────────────────────────────
+  'chart.bar.fill':                           'bar-chart',
+  'bubble.left.and.bubble.right.fill':        'chatbubbles',
+  'gearshape.fill':                           'settings',
+  'person.crop.circle.fill':                  'person-circle',
+
+  // ── Actions ─────────────────────────────────────────────────────────────────
+  'paperplane.fill':                          'send',
+  'arrow.up':                                 'arrow-up',
+  'arrow.down':                               'arrow-down',
+  'arrow.up.circle.fill':                     'arrow-up-circle',
+  'arrow.down.circle.fill':                   'arrow-down-circle',
+  'arrow.up.right':                           'trending-up',
+  'arrow.down.right':                         'trending-down',
+  'arrow.triangle.2.circlepath':              'sync',
+  'plus':                                     'add',
+  'plus.circle.fill':                         'add-circle',
+  'pencil':                                   'pencil',
+  'trash':                                    'trash',
+  'trash.fill':                               'trash',
+  'checkmark':                                'checkmark',
+  'checkmark.circle.fill':                    'checkmark-circle',
+  'square.and.arrow.up':                      'share-social',
+  'square.and.arrow.down':                    'download',
+  'eye.fill':                                 'eye',
+  'eye.slash.fill':                           'eye-off',
+
+  // ── Sleep & Health ──────────────────────────────────────────────────────────
+  'moon.fill':                                'moon',
+  'moon.stars.fill':                          'moon',
+  'moon.zzz.fill':                            'moon',
+  'sun.horizon.fill':                         'partly-sunny',
+  'sun.max.fill':                             'sunny',
+  'heart.fill':                               'heart',
+  'heart.text.square.fill':                   'heart-half',
+  'waveform.path.ecg':                        'pulse',
+  'brain.head.profile':                       'hardware-chip',
+  'sparkles':                                 'sparkles',
+  'bolt.fill':                                'flash',
+  'flame.fill':                               'flame',
+  'drop.fill':                                'water',
+  'wind':                                     'cloudy-night',
+
+  // ── Calendar & Time ─────────────────────────────────────────────────────────
+  'calendar':                                 'calendar',
+  'calendar.badge.plus':                      'calendar',
+  'clock.fill':                               'time',
+  'clock.badge.checkmark.fill':               'alarm',
+  'timer':                                    'timer-outline',
+
+  // ── Auth & User ─────────────────────────────────────────────────────────────
+  'person.fill':                              'person',
+  'person.badge.plus':                        'person-add',
+  'person.2.fill':                            'people',
+  'envelope.fill':                            'mail',
+  'lock.fill':                                'lock-closed',
+  'lock.open.fill':                           'lock-open',
+  'key.fill':                                 'key',
+  'apple.logo':                               'logo-apple',
+  'rectangle.portrait.and.arrow.right':       'log-out',
+
+  // ── Settings & Info ─────────────────────────────────────────────────────────
+  'bell.fill':                                'notifications',
+  'bell.slash.fill':                          'notifications-off',
+  'icloud.fill':                              'cloud',
+  'info.circle.fill':                         'information-circle',
+  'exclamationmark.circle.fill':              'alert-circle',
+  'exclamationmark.triangle.fill':            'warning',
+  'doc.text.fill':                            'document-text',
+  'hand.raised.fill':                         'hand-right',
+  'shield.fill':                              'shield',
+  'globe':                                    'globe',
+  'paintbrush.fill':                          'color-palette',
+
+  // ── Stats & Insights ────────────────────────────────────────────────────────
+  'chart.line.uptrend.xyaxis':                'trending-up',
+  'chart.xyaxis.line':                        'analytics',
+  'chart.pie.fill':                           'pie-chart',
+  'star.fill':                                'star',
+  'star.leadinghalf.filled':                  'star-half',
+  'target':                                   'locate',
+  'book.fill':                                'book',
+  'bookmark.fill':                            'bookmark',
+} as const satisfies IconMapping;
 
 /**
- * An icon component that uses native SF Symbols on iOS, and Material Icons on Android and web.
- * This ensures a consistent look across platforms, and optimal resource usage.
- * Icon `name`s are based on SF Symbols and require manual mapping to Material Icons.
+ * Cross-platform icon component.
+ * Uses native SF Symbols on iOS (icon-symbol.ios.tsx) and Ionicons elsewhere.
  */
 export function IconSymbol({
   name,
@@ -74,5 +127,7 @@ export function IconSymbol({
   style?: StyleProp<TextStyle>;
   weight?: SymbolWeight;
 }) {
-  return <MaterialIcons color={color} size={size} name={MAPPING[name]} style={style} />;
+  const ionName = MAPPING[name];
+  if (!ionName) return null;
+  return <Ionicons color={color} size={size} name={ionName} style={style} />;
 }

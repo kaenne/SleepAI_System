@@ -1,136 +1,45 @@
 import { authApi, getAccessToken } from './auth';
+import { type ApiError, getBaseUrl, httpRequest } from './http-client';
 
-export type ApiError = {
-  message: string;
-  status?: number;
-  url?: string;
-};
+export type { ApiError };
 
-function getBaseUrl(): string | null {
-  const raw = (process.env.EXPO_PUBLIC_API_BASE_URL ?? '').trim();
-  if (!raw) return null;
-  return raw.endsWith('/') ? raw.slice(0, -1) : raw;
-}
-
-function withTimeout(timeoutMs: number) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
-  return { signal: controller.signal, dispose: () => clearTimeout(timeout) };
-}
-
-type RequestOptions = RequestInit & { 
+type RequestOptions = RequestInit & {
   timeoutMs?: number;
   requireAuth?: boolean;
 };
 
+/**
+ * Authenticated JSON request. Adds `Authorization: Bearer <token>`, transparently
+ * refreshes on 401 once, then retries the original request. Network/timeout/JSON
+ * handling is delegated to `httpRequest` to avoid duplication.
+ */
 async function requestJson<T>(
   path: string,
   init?: RequestOptions
 ): Promise<T> {
-  const baseUrl = getBaseUrl();
-  if (!baseUrl) {
-    throw { message: 'API base URL is not configured (EXPO_PUBLIC_API_BASE_URL).' } satisfies ApiError;
-  }
+  const { timeoutMs = 8000, requireAuth = true, headers, ...rest } = init ?? {};
 
-  const url = `${baseUrl}${path.startsWith('/') ? '' : '/'}${path}`;
-  const { timeoutMs = 8000, requireAuth = true, ...rest } = init ?? {};
-  const { signal, dispose } = withTimeout(timeoutMs);
-
-  // Get auth token if required
-  let authHeaders: Record<string, string> = {};
-  if (requireAuth) {
+  const buildHeaders = async (): Promise<HeadersInit | undefined> => {
+    if (!requireAuth) return headers;
     const token = await getAccessToken();
-    if (token) {
-      authHeaders['Authorization'] = `Bearer ${token}`;
-    }
-  }
+    return token
+      ? { ...(headers ?? {}), Authorization: `Bearer ${token}` }
+      : headers;
+  };
 
   try {
-    const res = await fetch(url, {
-      ...rest,
-      signal,
-      headers: {
-        Accept: 'application/json',
-        ...authHeaders,
-        ...(rest.headers ?? {}),
-      },
-    });
+    return await httpRequest<T>(path, { ...rest, headers: await buildHeaders(), timeoutMs });
+  } catch (err: any) {
+    // Refresh-and-retry only on 401 with auth requested.
+    if (err?.status !== 401 || !requireAuth) throw err;
 
-    const contentType = res.headers.get('content-type') ?? '';
-    const isJson = contentType.includes('application/json');
-
-    // Handle 401 Unauthorized - try to refresh token
-    if (res.status === 401 && requireAuth) {
-      try {
-        await authApi.refreshToken();
-        // Retry the request with new token
-        const newToken = await getAccessToken();
-        if (newToken) {
-          const retryRes = await fetch(url, {
-            ...rest,
-            signal,
-            headers: {
-              Accept: 'application/json',
-              Authorization: `Bearer ${newToken}`,
-              ...(rest.headers ?? {}),
-            },
-          });
-          
-          if (retryRes.ok) {
-            if (retryRes.status === 204) return undefined as T;
-            const retryContentType = retryRes.headers.get('content-type') ?? '';
-            if (retryContentType.includes('application/json')) {
-              return (await retryRes.json()) as T;
-            }
-            return (await retryRes.text()) as unknown as T;
-          }
-        }
-      } catch {
-        // Token refresh failed
-        throw { message: 'Session expired. Please login again.', status: 401, url } satisfies ApiError;
-      }
+    try {
+      await authApi.refreshToken();
+    } catch {
+      throw { message: 'Session expired. Please login again.', status: 401 } satisfies ApiError;
     }
 
-    if (!res.ok) {
-      let message = `Request failed (${res.status})`;
-      try {
-        if (isJson) {
-          const data: any = await res.json();
-          message = data?.message ?? data?.error ?? message;
-        } else {
-          const text = await res.text();
-          if (text) message = text;
-        }
-      } catch {
-        // ignore
-      }
-
-      throw { message, status: res.status, url } satisfies ApiError;
-    }
-
-    if (res.status === 204) {
-      return undefined as T;
-    }
-
-    if (isJson) {
-      return (await res.json()) as T;
-    }
-
-    const text = await res.text();
-    return text as unknown as T;
-  } catch (e: any) {
-    if (e?.name === 'AbortError') {
-      throw { message: 'Request timeout', url } satisfies ApiError;
-    }
-    if (e?.message && e?.status) {
-      throw e;
-    }
-    if (e?.message) {
-      throw { message: e.message, url } satisfies ApiError;
-    }
-    throw { message: 'Network error', url } satisfies ApiError;
-  } finally {
-    dispose();
+    return httpRequest<T>(path, { ...rest, headers: await buildHeaders(), timeoutMs });
   }
 }
 
@@ -161,8 +70,8 @@ export type JournalEntry = {
 export type SleepAnalysis = {
   sleepQuality: number; // 0-100
   averageSleep: number;
-  deepSleepPercent: number;
-  remSleepPercent: number;
+  deepSleepPercent: number | null;
+  remSleepPercent: number | null;
   insights: string[];
   recommendations: string[];
 };
@@ -172,22 +81,42 @@ export type ChatMessage = {
   role: 'user' | 'assistant';
   content: string;
   timestamp: string;
+  conversationId?: string;
 };
 
 export type ChatResponse = {
   message: ChatMessage;
   suggestions?: string[];
+  conversationId?: string;
 };
 
 export type AiPredictionRequest = {
   sleepDuration: number;
   stressLevel: number;
   heartRate: number;
+  physicalActivity?: number;
+  caffeineIntake?: number;
+  alcoholIntake?: number;
+  exerciseFrequency?: number;
+  age?: number;
+  gender?: number;
+  bedtimeHour?: number;
+};
+
+export type AiPredictionFactor = {
+  feature: string;
+  impact: number;  // % пунктов качества (+ улучшает, - ухудшает)
 };
 
 export type AiPredictionResponse = {
   predictedQuality: number;
+  remPercentage: number;
+  deepSleepPercentage: number;
+  awakeningsCategory: number;    // 0=норма(0-2), 1=нарушен(3+)
+  awakeningsLabel: string;
+  topFactors: AiPredictionFactor[];
   message: string;
+  modelVersion: string;
 };
 
 export const api = {
@@ -226,8 +155,8 @@ export const api = {
 
   async getJournalEntries(params?: { limit?: number; offset?: number }) {
     const query = new URLSearchParams();
-    if (params?.limit) query.set('limit', params.limit.toString());
-    if (params?.offset) query.set('offset', params.offset.toString());
+    if (params?.limit !== undefined) query.set('limit', params.limit.toString());
+    if (params?.offset !== undefined) query.set('offset', params.offset.toString());
     const qs = query.toString();
     
     return requestJson<JournalEntry[]>(`/api/journal/entries${qs ? `?${qs}` : ''}`);
@@ -257,17 +186,21 @@ export const api = {
 
   // ============ AI Chat ============
 
-  async sendChatMessage(content: string, _conversationId?: string) {
-    return requestJson<{ reply: string }>('/api/ai/chat', {
+  async sendChatMessage(content: string, conversationId?: string, userContext?: string) {
+    return requestJson<ChatResponse>('/api/chat/message', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: content }),
+      body: JSON.stringify({ content, conversationId, userContext }),
     });
   },
 
   async getChatHistory(conversationId?: string) {
     const query = conversationId ? `?conversationId=${conversationId}` : '';
     return requestJson<ChatMessage[]>(`/api/chat/history${query}`);
+  },
+
+  async clearChatHistory() {
+    return requestJson<{ message: string }>('/api/chat/history', { method: 'DELETE' });
   },
 
   // ============ User Settings ============
@@ -302,6 +235,26 @@ export const api = {
 
   async deleteUserData() {
     return requestJson<void>('/api/user/data', { method: 'DELETE' });
+  },
+
+  async updateProfile(name: string) {
+    return requestJson<{ id: string; name: string; email: string }>('/api/auth/profile', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    });
+  },
+
+  async googleLogin(accessToken: string) {
+    return requestJson<{ user: any; tokens: { accessToken: string; refreshToken: string; expiresIn: number } }>(
+      '/api/auth/google',
+      {
+        method: 'POST',
+        requireAuth: false,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accessToken }),
+      }
+    );
   },
 
   // ============ AI Prediction ============

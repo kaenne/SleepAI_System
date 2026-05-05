@@ -15,7 +15,6 @@ import {
 import Animated, {
   FadeIn,
   FadeInDown,
-  interpolate,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
@@ -24,8 +23,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { BorderRadius, Colors, Spacing } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { BorderRadius, Spacing } from '@/constants/theme';
+import { useTranslation } from '@/contexts/i18n-context';
 
 const { width, height } = Dimensions.get('window');
 
@@ -33,8 +32,6 @@ const SLIDES = [
   {
     id: '1',
     icon: 'moon.stars.fill' as const,
-    title: 'Умный трекер сна',
-    subtitle: 'Отслеживай каждую ночь с точностью ИИ. Записывай качество сна, время засыпания и пробуждения.',
     gradientStart: '#1E1B4B',
     gradientMid: '#3730A3',
     gradientEnd: '#6D28D9',
@@ -44,8 +41,6 @@ const SLIDES = [
   {
     id: '2',
     icon: 'brain.head.profile' as const,
-    title: 'ИИ-тренер по сну',
-    subtitle: 'Получай персональные советы на основе твоих данных. ИИ анализирует стресс, режим и качество сна.',
     gradientStart: '#0C1445',
     gradientMid: '#1E3A8A',
     gradientEnd: '#2563EB',
@@ -55,8 +50,6 @@ const SLIDES = [
   {
     id: '3',
     icon: 'sun.max.fill' as const,
-    title: 'Просыпайся свежим',
-    subtitle: 'Узнай свой идеальный режим сна. Анализируй тренды, улучшай здоровье и заряжайся энергией.',
     gradientStart: '#0F172A',
     gradientMid: '#134E4A',
     gradientEnd: '#0D9488',
@@ -68,8 +61,7 @@ const SLIDES = [
 export const ONBOARDING_KEY = 'sleepai_onboarding_done';
 
 export default function OnboardingScreen() {
-  const colorScheme = useColorScheme() ?? 'light';
-  const colors = Colors[colorScheme];
+  const { t } = useTranslation();
   const [currentIndex, setCurrentIndex] = React.useState(0);
   const flatListRef = React.useRef<FlatList>(null);
   const buttonScale = useSharedValue(1);
@@ -147,7 +139,7 @@ export default function OnboardingScreen() {
               style={styles.nextButton}
             >
               <ThemedText style={styles.nextButtonText}>
-                {currentIndex === SLIDES.length - 1 ? 'Начать' : 'Далее'}
+                {currentIndex === SLIDES.length - 1 ? t('onboarding.start') : t('onboarding.next')}
               </ThemedText>
               {currentIndex < SLIDES.length - 1 && (
                 <IconSymbol name="chevron.right" size={18} color="#FFFFFF" />
@@ -160,7 +152,7 @@ export default function OnboardingScreen() {
         {currentIndex < SLIDES.length - 1 && (
           <Pressable onPress={handleSkip} style={styles.skipButton}>
             <ThemedText style={[styles.skipText, { color: 'rgba(255,255,255,0.5)' }]}>
-              Пропустить
+              {t('onboarding.skip')}
             </ThemedText>
           </Pressable>
         )}
@@ -170,6 +162,7 @@ export default function OnboardingScreen() {
 }
 
 function SlideItem({ item, index }: { item: (typeof SLIDES)[0]; index: number }) {
+  const { t } = useTranslation();
   return (
     <View style={styles.slide}>
       <LinearGradient
@@ -198,8 +191,8 @@ function SlideItem({ item, index }: { item: (typeof SLIDES)[0]; index: number })
           entering={FadeInDown.delay(index * 100 + 200).duration(600)}
           style={styles.textSection}
         >
-          <ThemedText style={styles.slideTitle}>{item.title}</ThemedText>
-          <ThemedText style={styles.slideSubtitle}>{item.subtitle}</ThemedText>
+          <ThemedText style={styles.slideTitle}>{t(`onboarding.slide${item.id}_title` as any)}</ThemedText>
+          <ThemedText style={styles.slideSubtitle}>{t(`onboarding.slide${item.id}_subtitle` as any)}</ThemedText>
         </Animated.View>
       </SafeAreaView>
     </View>
@@ -213,7 +206,7 @@ function Dot({ active, color }: { active: boolean; color: string }) {
   React.useEffect(() => {
     scale.value = withSpring(active ? 1 : 0.7);
     opacity.value = withSpring(active ? 1 : 0.4);
-  }, [active]);
+  }, [active, scale, opacity]);
 
   const style = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],

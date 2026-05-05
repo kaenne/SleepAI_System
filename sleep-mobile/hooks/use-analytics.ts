@@ -23,6 +23,7 @@ export type AnalyticsData = {
   sleep: SleepAnalysis | null;
   stress: StressAnalysis | null;
   isLoading: boolean;
+  isOffline: boolean;
   error: string | null;
   lastUpdated: Date | null;
 };
@@ -36,61 +37,40 @@ export function useAnalytics() {
   const [sleep, setSleep] = useState<SleepAnalysis | null>(null);
   const [stress, setStress] = useState<StressAnalysis | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isOffline, setIsOffline] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
-  const fetchSleepAnalysis = useCallback(async (days: number = 7) => {
+  const fetchSleepAnalysis = useCallback(async (days: number = 7): Promise<SleepAnalysis | null> => {
     const baseUrl = api.getBaseUrl();
-    
-    if (!baseUrl) {
-      // Return mock data when backend unavailable
-      return getMockSleepAnalysis();
-    }
+    if (!baseUrl) return null;
 
     try {
       const token = await getToken();
       const response = await fetch(`${baseUrl}/api/analysis/sleep?days=${days}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+        headers: { 'Authorization': `Bearer ${token}` },
       });
-
-      if (response.ok) {
-        const data = await response.json();
-        return data as SleepAnalysis;
-      }
-    } catch (e) {
-      console.error('Failed to fetch sleep analysis:', e);
+      if (response.ok) return (await response.json()) as SleepAnalysis;
+    } catch {
+      // network error
     }
-    
-    return getMockSleepAnalysis();
+    return null;
   }, []);
 
-  const fetchStressAnalysis = useCallback(async (days: number = 7) => {
+  const fetchStressAnalysis = useCallback(async (days: number = 7): Promise<StressAnalysis | null> => {
     const baseUrl = api.getBaseUrl();
-    
-    if (!baseUrl) {
-      // Return mock data when backend unavailable
-      return getMockStressAnalysis();
-    }
+    if (!baseUrl) return null;
 
     try {
       const token = await getToken();
       const response = await fetch(`${baseUrl}/api/analysis/stress?days=${days}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+        headers: { 'Authorization': `Bearer ${token}` },
       });
-
-      if (response.ok) {
-        const data = await response.json();
-        return data as StressAnalysis;
-      }
-    } catch (e) {
-      console.error('Failed to fetch stress analysis:', e);
+      if (response.ok) return (await response.json()) as StressAnalysis;
+    } catch {
+      // network error
     }
-    
-    return getMockStressAnalysis();
+    return null;
   }, []);
 
   const refresh = useCallback(async (days: number = 7) => {
@@ -103,11 +83,14 @@ export function useAnalytics() {
         fetchStressAnalysis(days),
       ]);
 
+      const offline = sleepData === null && stressData === null;
+      setIsOffline(offline);
       setSleep(sleepData);
       setStress(stressData);
       setLastUpdated(new Date());
     } catch (e: any) {
       setError(e.message || 'Failed to fetch analytics');
+      setIsOffline(true);
     } finally {
       setIsLoading(false);
     }
@@ -123,48 +106,32 @@ export function useAnalytics() {
     sleep,
     stress,
     isLoading,
+    isOffline,
     error,
     lastUpdated,
     refresh,
   };
 }
 
-// Mock data generators
-function getMockSleepAnalysis(): SleepAnalysis {
-  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+// Kept for potential future use (e.g. onboarding screens without auth)
+export function getMockSleepAnalysis(): SleepAnalysis {
   return {
     averageSleepHours: 7.2,
     averageQuality: 75,
-    totalEntries: 14,
-    sleepTrend: 'improving',
-    insights: [
-      'Your sleep quality improved by 12% this week',
-      'Best sleep was on Saturday (8.5 hours)',
-      'Consider going to bed 30 minutes earlier',
-    ],
-    weeklyData: days.map((day, i) => ({
-      day,
-      hours: 6 + Math.random() * 3,
-      quality: 60 + Math.random() * 40,
-    })),
+    totalEntries: 0,
+    sleepTrend: 'stable',
+    insights: [],
+    weeklyData: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(day => ({ day, hours: 0, quality: 0 })),
   };
 }
 
-function getMockStressAnalysis(): StressAnalysis {
-  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+export function getMockStressAnalysis(): StressAnalysis {
   return {
-    averageStressLevel: 4.5,
+    averageStressLevel: 0,
     stressTrend: 'stable',
-    highStressDays: 2,
-    insights: [
-      'Your stress levels are relatively stable',
-      'Peak stress occurred on Wednesday',
-      'Weekend stress levels were significantly lower',
-    ],
-    weeklyData: days.map((day) => ({
-      day,
-      level: Math.round(2 + Math.random() * 6),
-    })),
+    highStressDays: 0,
+    insights: [],
+    weeklyData: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(day => ({ day, level: 0 })),
   };
 }
 

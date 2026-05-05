@@ -2,13 +2,16 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import * as React from 'react';
+import { useTranslation } from '@/contexts/i18n-context';
 
 const NOTIF_ENABLED_KEY = 'sleepai_notifications_enabled';
 const NOTIF_TIME_KEY = 'sleepai_notification_time'; // "HH:MM"
+const WAKE_UP_NOTIF_ID_KEY = 'sleepai_wakeup_notif_id';
+const SLEEP_REMINDER_ID_KEY = 'sleepai_reminder_notif_id';
 
 export type NotificationTime = { hour: number; minute: number };
 
-// Configure default handler
+// Configure default handler — show even when app is open
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowBanner: true,
@@ -19,23 +22,54 @@ Notifications.setNotificationHandler({
   }),
 });
 
+// Create Android channel for alarms (must be HIGH importance)
+async function ensureAlarmChannel(): Promise<void> {
+  if (Platform.OS !== 'android') return;
+  await Notifications.setNotificationChannelAsync('sleepai_alarm', {
+    name: '⏰ SleepAI Alarm',
+    importance: Notifications.AndroidImportance.MAX,
+    sound: 'default',
+    vibrationPattern: [0, 500, 250, 500, 250, 500],
+    enableVibrate: true,
+    enableLights: true,
+    lightColor: '#a855f7',
+    lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+    bypassDnd: true,         // bypass Do Not Disturb
+  });
+}
+
 async function requestPermissions(): Promise<boolean> {
   if (Platform.OS === 'web') return false;
   const { status: existing } = await Notifications.getPermissionsAsync();
   if (existing === 'granted') return true;
-  const { status } = await Notifications.requestPermissionsAsync();
+  const { status } = await Notifications.requestPermissionsAsync({
+    android: { allowAlert: true, allowSound: true, allowBadge: false },
+  });
   return status === 'granted';
 }
 
-async function scheduleReminder(hour: number, minute: number): Promise<string | null> {
+/** Returns the next Date when the given hour:minute will occur (today or tomorrow) */
+function nextAlarmDate(hour: number, minute: number): Date {
+  const now = new Date();
+  const candidate = new Date(now);
+  candidate.setHours(hour, minute, 0, 0);
+  // If the time has already passed today — schedule for tomorrow
+  if (candidate.getTime() <= now.getTime() + 30_000) {
+    candidate.setDate(candidate.getDate() + 1);
+  }
+  return candidate;
+}
+
+async function scheduleReminder(hour: number, minute: number, title: string, body: string): Promise<string | null> {
   if (Platform.OS === 'web') return null;
-  // Cancel existing sleep reminders
   await cancelSleepReminders();
+  await ensureAlarmChannel();
   const id = await Notifications.scheduleNotificationAsync({
     content: {
-      title: '🌙 Время ложиться спать',
-      body: 'Откройте SleepMind и запишите свой день. Хороший сон — основа здоровья!',
-      sound: true,
+      title,
+      body,
+      sound: 'default',
+      ...(Platform.OS === 'android' && { channelId: 'sleepai_alarm' }),
     },
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.DAILY,
@@ -43,29 +77,69 @@ async function scheduleReminder(hour: number, minute: number): Promise<string | 
       minute,
     },
   });
+  await AsyncStorage.setItem(SLEEP_REMINDER_ID_KEY, id);
   return id;
 }
 
 async function cancelSleepReminders(): Promise<void> {
   if (Platform.OS === 'web') return;
-  const scheduled = await Notifications.getAllScheduledNotificationsAsync();
-  for (const notif of scheduled) {
-    if (notif.content.title?.includes('SleepMind') || notif.content.title?.includes('ложиться')) {
-      await Notifications.cancelScheduledNotificationAsync(notif.identifier);
+  try {
+    const id = await AsyncStorage.getItem(SLEEP_REMINDER_ID_KEY);
+    if (id) {
+      await Notifications.cancelScheduledNotificationAsync(id);
+      await AsyncStorage.removeItem(SLEEP_REMINDER_ID_KEY);
     }
-  }
+  } catch { /* ignore */ }
 }
+
+export async function scheduleWakeUpAlarm(hour: number, minute: number, title: string, body: string): Promise<void> {
+  if (Platform.OS === 'web') return;
+  await cancelWakeUpAlarm();
+  await ensureAlarmChannel();
+
+  const alarmDate = nextAlarmDate(hour, minute);
+
+  const id = await Notifications.scheduleNotificationAsync({
+    content: {
+      title,
+      body,
+      sound: 'default',
+      priority: 'max',
+      ...(Platform.OS === 'android' && { channelId: 'sleepai_alarm' }),
+    },
+    trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.DATE,
+      date: alarmDate,
+    },
+  });
+  await AsyncStorage.setItem(WAKE_UP_NOTIF_ID_KEY, id);
+  console.log(`✅ Alarm scheduled for ${alarmDate.toLocaleTimeString()}`);
+}
+
+export async function cancelWakeUpAlarm(): Promise<void> {
+  if (Platform.OS === 'web') return;
+  try {
+    const id = await AsyncStorage.getItem(WAKE_UP_NOTIF_ID_KEY);
+    if (id) {
+      await Notifications.cancelScheduledNotificationAsync(id);
+      await AsyncStorage.removeItem(WAKE_UP_NOTIF_ID_KEY);
+    }
+  } catch { /* ignore */ }
+}
+
 
 export function useNotifications() {
   const [enabled, setEnabled] = React.useState(false);
   const [time, setTime] = React.useState<NotificationTime>({ hour: 22, minute: 0 });
   const [hasPermission, setHasPermission] = React.useState(false);
   const [loading, setLoading] = React.useState(true);
+  const { t } = useTranslation();
 
-  // Load saved state
+  // Load saved state + ensure channel exists
   React.useEffect(() => {
     const load = async () => {
       try {
+        await ensureAlarmChannel();
         const [enabledVal, timeVal] = await Promise.all([
           AsyncStorage.getItem(NOTIF_ENABLED_KEY),
           AsyncStorage.getItem(NOTIF_TIME_KEY),
@@ -94,7 +168,7 @@ export function useNotifications() {
         return false;
       }
       setHasPermission(true);
-      await scheduleReminder(time.hour, time.minute);
+      await scheduleReminder(time.hour, time.minute, t('notifications.bedtimeTitle'), t('notifications.bedtimeBody'));
       await AsyncStorage.setItem(NOTIF_ENABLED_KEY, 'true');
     } else {
       await cancelSleepReminders();
@@ -109,21 +183,24 @@ export function useNotifications() {
     const timeStr = `${String(newTime.hour).padStart(2, '0')}:${String(newTime.minute).padStart(2, '0')}`;
     await AsyncStorage.setItem(NOTIF_TIME_KEY, timeStr);
     if (enabled) {
-      await scheduleReminder(newTime.hour, newTime.minute);
+      await scheduleReminder(newTime.hour, newTime.minute, t('notifications.bedtimeTitle'), t('notifications.bedtimeBody'));
     }
-  }, [enabled]);
+  }, [enabled, t]);
 
   const sendTestNotification = React.useCallback(async () => {
     if (Platform.OS === 'web') return;
+    await ensureAlarmChannel();
     await Notifications.scheduleNotificationAsync({
       content: {
-        title: '🌙 SleepMind — тест',
-        body: 'Уведомления работают! Ложитесь спать вовремя 💤',
-        sound: true,
+        title: t('notifications.testTitle'),
+        body: t('notifications.testBody'),
+        sound: 'default',
+        priority: 'max',
+        ...(Platform.OS === 'android' && { channelId: 'sleepai_alarm' }),
       },
       trigger: null, // send immediately
     });
-  }, []);
+  }, [t]);
 
   const timeString = `${String(time.hour).padStart(2, '0')}:${String(time.minute).padStart(2, '0')}`;
 

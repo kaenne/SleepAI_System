@@ -1,7 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as React from 'react';
+import { api } from '@/services/api';
+import { useAuth } from '@/contexts/auth-context';
 
-const STORAGE_KEY = 'sleepMobile.sleepJournalEntries.v1';
+const STORAGE_KEY_BASE = 'sleepMobile.sleepJournalEntries.v1';
 
 export type SleepStressEntry = {
   id: string;
@@ -25,31 +27,42 @@ function round1(value: number) {
   return Math.round(value * 10) / 10;
 }
 
-export function generateInsight(entry: Pick<SleepStressEntry, 'sleepHours' | 'stressLevel'>) {
+export function generateInsight(
+  entry: Pick<SleepStressEntry, 'sleepHours' | 'stressLevel'>,
+  t: (key: string) => string,
+) {
   const sleep = entry.sleepHours;
   const stress = entry.stressLevel;
 
   if (sleep < 6 && stress >= 7) {
-    return 'High stress + short sleep detected. Consider a 10-minute breathing session before bed and aim for earlier bedtime.';
+    return t('journal.insight_high_stress_sleep');
   }
 
   if (sleep < 6) {
-    return 'Short sleep detected. Try to increase sleep duration by 30–60 minutes tonight.';
+    return t('journal.insight_short_sleep');
   }
 
   if (stress >= 7) {
-    return 'High stress detected. A short walk, journaling, or breathing exercise may help reduce tension.';
+    return t('journal.insight_high_stress');
   }
 
   if (sleep >= 7 && stress <= 4) {
-    return 'Great balance today: good sleep and low stress. Keep your routine consistent.';
+    return t('journal.insight_good');
   }
 
-  return 'Stable day. Keep tracking to spot patterns over time.';
+  return t('journal.insight_stable');
 }
 
-async function readEntries(): Promise<SleepStressEntry[]> {
-  const raw = await AsyncStorage.getItem(STORAGE_KEY);
+function storageKey(userId?: string | null) {
+  return userId ? `${STORAGE_KEY_BASE}.${userId}` : STORAGE_KEY_BASE;
+}
+
+export async function clearJournalCache(userId: string | null | undefined) {
+  await AsyncStorage.removeItem(storageKey(userId));
+}
+
+async function readEntries(key: string): Promise<SleepStressEntry[]> {
+  const raw = await AsyncStorage.getItem(key);
   if (!raw) return [];
 
   const parsed = JSON.parse(raw);
@@ -78,8 +91,8 @@ async function readEntries(): Promise<SleepStressEntry[]> {
     .filter(Boolean) as SleepStressEntry[];
 }
 
-async function writeEntries(entries: SleepStressEntry[]) {
-  await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+async function writeEntries(key: string, entries: SleepStressEntry[]) {
+  await AsyncStorage.setItem(key, JSON.stringify(entries));
 }
 
 function computeStats(entries: SleepStressEntry[]): SleepJournalStats {
@@ -98,6 +111,9 @@ function computeStats(entries: SleepStressEntry[]): SleepJournalStats {
 }
 
 export function useSleepJournal() {
+  const { user } = useAuth();
+  const key = storageKey(user?.id);
+
   const [entries, setEntries] = React.useState<SleepStressEntry[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -108,7 +124,49 @@ export function useSleepJournal() {
     setIsLoading(true);
     setError(null);
     try {
-      const loaded = await readEntries();
+      const loaded = await readEntries(key);
+
+      // Sync from backend — merge, backend entries are authoritative
+      try {
+        const remote = await api.getJournalEntries({ limit: 200 });
+        if (remote.length > 0) {
+          const remoteMapped: SleepStressEntry[] = remote.map(e => ({
+            id: e.id,
+            createdAt: e.createdAt,
+            sleepHours: clamp(Number(e.sleepHours), 0, 24),
+            stressLevel: clamp(Number(e.stressLevel), 1, 10),
+            note: e.note,
+          }));
+          // Local entries the backend doesn't yet have — match on createdAt to the second
+          const remoteKeys = new Set(remoteMapped.map(e => e.createdAt.slice(0, 19)));
+          const localOnly = loaded.filter(e => !remoteKeys.has(e.createdAt.slice(0, 19)));
+
+          // Catch-up sync: push pending local-only entries to backend.
+          // Each succeeds → it'll appear on next refresh and stop being "local-only".
+          for (const entry of localOnly) {
+            try {
+              await api.createJournalEntry({
+                createdAt: entry.createdAt,
+                sleepHours: entry.sleepHours,
+                stressLevel: entry.stressLevel,
+                note: entry.note,
+              });
+            } catch {
+              // Still offline / 401 — keep locally, retry on next refresh.
+            }
+          }
+
+          const merged = [...remoteMapped, ...localOnly];
+          merged.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+          await writeEntries(key, merged);
+          setEntries(merged);
+          setIsLoading(false);
+          return;
+        }
+      } catch {
+        // backend offline or unauthenticated — fall through to local data
+      }
+
       loaded.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
       setEntries(loaded);
     } catch (e: any) {
@@ -116,11 +174,13 @@ export function useSleepJournal() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [key]);
 
+  // Re-fetch when the active user changes (account switch or logout)
   React.useEffect(() => {
+    setEntries([]);
     void refresh();
-  }, [refresh]);
+  }, [key, refresh]);
 
   const addEntry = React.useCallback(
     async (data: Omit<SleepStressEntry, 'id' | 'createdAt'> & { createdAt?: string }) => {
@@ -134,15 +194,26 @@ export function useSleepJournal() {
 
       setEntries((previous) => {
         const next = [newEntry, ...previous];
-        void writeEntries(next).catch((e: any) => {
+        void writeEntries(key, next).catch((e: any) => {
           setError(e?.message ?? 'Failed to save entry');
         });
         return next;
       });
 
+      // Fire-and-forget backend sync. On failure (offline / 401), the entry stays local
+      // and refresh() will retry the catch-up upload on next foregrounding.
+      void api
+        .createJournalEntry({
+          createdAt: newEntry.createdAt,
+          sleepHours: newEntry.sleepHours,
+          stressLevel: newEntry.stressLevel,
+          note: newEntry.note,
+        })
+        .catch(() => { /* swallowed — picked up by refresh() catch-up loop */ });
+
       return newEntry;
     },
-    []
+    [key]
   );
 
   return {
@@ -152,5 +223,9 @@ export function useSleepJournal() {
     error,
     refresh,
     addEntry,
+    clearAll: React.useCallback(async () => {
+      await writeEntries(key, []);
+      setEntries([]);
+    }, [key]),
   };
 }

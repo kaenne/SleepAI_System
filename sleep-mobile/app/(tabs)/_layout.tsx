@@ -1,18 +1,38 @@
 import { BlurView } from 'expo-blur';
 import { Tabs } from 'expo-router';
 import React from 'react';
-import { Platform, StyleSheet } from 'react-native';
+import { Alert, BackHandler, Platform, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
+import { useTranslation } from '@/contexts/i18n-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
+
+  // Android back button — show exit confirmation
+  React.useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    const handler = BackHandler.addEventListener('hardwareBackPress', () => {
+      Alert.alert(
+        t('common.exitTitle'),
+        t('common.exitMsg'),
+        [
+          { text: t('common.cancel'), style: 'cancel' },
+          { text: t('common.exitBtn'), style: 'destructive', onPress: () => BackHandler.exitApp() },
+        ],
+        { cancelable: true }
+      );
+      return true; // prevent default back action
+    });
+    return () => handler.remove();
+  }, [t]);
 
   const tabBarHeight = (Platform.OS === 'ios' ? 88 : 68) + insets.bottom;
 
@@ -60,7 +80,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Дневник',
+          title: t('tabs.diary'),
           tabBarIcon: ({ color, focused }) => (
             <IconSymbol size={focused ? 27 : 24} name="house.fill" color={color} />
           ),
@@ -69,7 +89,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="stats"
         options={{
-          title: 'Статистика',
+          title: t('tabs.stats'),
           tabBarIcon: ({ color, focused }) => (
             <IconSymbol size={focused ? 27 : 24} name="chart.bar.fill" color={color} />
           ),
@@ -78,7 +98,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="chat"
         options={{
-          title: 'AI Тренер',
+          title: t('tabs.aiTrainer'),
           tabBarIcon: ({ color, focused }) => (
             <IconSymbol size={focused ? 27 : 24} name="bubble.left.and.bubble.right.fill" color={color} />
           ),
@@ -87,7 +107,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="settings"
         options={{
-          title: 'Настройки',
+          title: t('tabs.settings'),
           tabBarIcon: ({ color, focused }) => (
             <IconSymbol size={focused ? 27 : 24} name="gearshape.fill" color={color} />
           ),
@@ -96,7 +116,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Профиль',
+          title: t('tabs.profile'),
           tabBarIcon: ({ color, focused }) => (
             <IconSymbol size={focused ? 27 : 24} name="person.crop.circle.fill" color={color} />
           ),

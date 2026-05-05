@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
     ApiError,
@@ -9,6 +9,7 @@ import {
     RegisterRequest,
     User,
 } from '@/services/auth';
+import { clearJournalCache } from '@/hooks/use-sleep-journal';
 
 type AuthState = {
   user: User | null;
@@ -35,6 +36,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isLoading: true,
     error: null,
   });
+
+  // Ref keeps the current userId accessible inside stable callbacks without deps churn
+  const userIdRef = useRef<string | null | undefined>(null);
+  useEffect(() => { userIdRef.current = state.user?.id; }, [state.user?.id]);
 
   // Initialize auth state from storage
   useEffect(() => {
@@ -117,10 +122,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const logout = useCallback(async () => {
+    const userId = userIdRef.current;
     setState((prev) => ({ ...prev, isLoading: true }));
     try {
       await authApi.logout();
     } finally {
+      await clearJournalCache(userId);
       setState({
         user: null,
         isAuthenticated: false,

@@ -8,6 +8,7 @@ import {
     Pressable,
     SafeAreaView,
     ScrollView,
+    Share,
     StyleSheet,
     Switch,
     TextInput,
@@ -20,10 +21,12 @@ import { Card } from '@/components/ui/card';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { BorderRadius, Colors, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { LANG_OPTIONS, useTranslation } from '@/contexts/i18n-context';
 import { useColorSchemeOverride, useTheme } from '@/contexts/theme-context';
 import { useNotifications } from '@/hooks/use-notifications';
+import { useSleepJournal } from '@/hooks/use-sleep-journal';
 import { api } from '@/services/api';
+import Constants from 'expo-constants';
 
 type SettingRowProps = {
   icon: string;
@@ -78,16 +81,19 @@ function SettingRow({
   return content;
 }
 
-export default function НастройкиScreen() {
+export default function SettingsScreen() {
   const colorScheme = useColorSchemeOverride() ?? 'light';
   const colors = Colors[colorScheme];
   const { user, isAuthenticated, logout } = useAuth();
   const { isDark, toggleTheme } = useTheme();
   const notif = useNotifications();
+  const { entries, clearAll } = useSleepJournal();
+  const { t, language, setLanguage } = useTranslation();
 
   const [backendUrl, setBackendUrl] = React.useState(api.getBaseUrl() || '');
   const [showBackendInput, setShowBackendInput] = React.useState(false);
   const [showTimePicker, setShowTimePicker] = React.useState(false);
+  const [showLangPicker, setShowLangPicker] = React.useState(false);
   const [tempHour, setTempHour] = React.useState(notif.time.hour);
   const [tempMinute, setTempMinute] = React.useState(notif.time.minute);
 
@@ -102,20 +108,18 @@ export default function НастройкиScreen() {
   const handleNotifToggle = React.useCallback(async (value: boolean) => {
     const ok = await notif.toggle(value);
     if (!ok && value) {
-      Alert.alert(
-        'Разрешите уведомления',
-        'Пожалуйста, разрешите уведомления в настройках телефона.',
-      );
+      Alert.alert(t('settings.allowNotifications'), t('settings.allowNotificationsMsg'));
     }
-  }, [notif]);
+  }, [notif, t]);
 
   const handleSaveTime = React.useCallback(async () => {
     await notif.updateTime({ hour: tempHour, minute: tempMinute });
     setShowTimePicker(false);
     if (notif.enabled) {
-      Alert.alert('Готово', `Напоминание установлено на ${String(tempHour).padStart(2,'0')}:${String(tempMinute).padStart(2,'0')} ежедневно`);
+      const time = `${String(tempHour).padStart(2,'0')}:${String(tempMinute).padStart(2,'0')}`;
+      Alert.alert(t('common.done'), t('settings.reminderSet', { time }));
     }
-  }, [notif, tempHour, tempMinute]);
+  }, [notif, tempHour, tempMinute, t]);
 
   // Get user initials for avatar
   const userInitials = React.useMemo(() => {
@@ -129,12 +133,12 @@ export default function НастройкиScreen() {
 
   const handleLogout = React.useCallback(async () => {
     Alert.alert(
-      'Выход',
-      'Вы уверены, что хотите выйти?',
+      t('settings.logoutTitle'),
+      t('settings.logoutMsg'),
       [
-        { text: 'Отмена', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Выйти',
+          text: t('settings.logoutBtn'),
           style: 'destructive',
           onPress: async () => {
             await logout();
@@ -143,33 +147,51 @@ export default function НастройкиScreen() {
         },
       ]
     );
-  }, [logout]);
+  }, [logout, t]);
 
-  const handleSaveBackend = React.useCallback(() => {
-    if (backendUrl.trim()) {
-      // Note: Backend URL is configured via EXPO_PUBLIC_API_BASE_URL env variable
-      Alert.alert('Инфо', 'URL бэкенда настраивается в файле .env как EXPO_PUBLIC_API_BASE_URL');
+  const handleExport = React.useCallback(async () => {
+    if (isAuthenticated) {
+      try {
+        const data = await api.exportUserData();
+        await Share.share({ message: JSON.stringify(data, null, 2), title: 'SleepAI export' });
+      } catch {
+        Alert.alert(t('common.error'), t('common.comingSoon'));
+      }
+    } else {
+      // Guest: export local journal entries
+      try {
+        await Share.share({
+          message: JSON.stringify(entries, null, 2),
+          title: 'SleepAI export',
+        });
+      } catch {
+        // Share cancelled – ignore
+      }
     }
-    setShowBackendInput(false);
-  }, [backendUrl]);
+  }, [isAuthenticated, entries, t]);
 
   const handleClearData = React.useCallback(() => {
     Alert.alert(
-      'Очистить все данные',
-      'Это удалит все ваши записи о сне. Это действие нельзя отменить.',
+      t('settings.clearDataTitle'),
+      t('settings.clearDataMsg'),
       [
-        { text: 'Отмена', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         { 
-          text: 'Очистить', 
+          text: t('settings.clearDataBtn'), 
           style: 'destructive',
-          onPress: () => {
-            // Would clear AsyncStorage here
-            Alert.alert('Готово', 'Все данные удалены');
+          onPress: async () => {
+            if (isAuthenticated) {
+              try {
+                await api.deleteUserData();
+              } catch { /* ignore if offline */ }
+            }
+            await clearAll();
+            Alert.alert(t('common.done'), t('settings.clearDone'));
           }
         },
       ]
     );
-  }, []);
+  }, [isAuthenticated, clearAll, t]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -182,8 +204,8 @@ export default function НастройкиScreen() {
       >
         <SafeAreaView style={{ flex: 1 }}>
           <Animated.View entering={FadeInDown.duration(400)} style={styles.headerContent}>
-            <ThemedText style={styles.headerTitle}>⚙️ Настройки</ThemedText>
-            <ThemedText style={styles.headerSubtitle}>Настройте приложение под себя ✨</ThemedText>
+            <ThemedText style={styles.headerTitle}>{t('settings.title')}</ThemedText>
+            <ThemedText style={styles.headerSubtitle}>{t('settings.subtitle')}</ThemedText>
           </Animated.View>
         </SafeAreaView>
       </LinearGradient>
@@ -209,10 +231,10 @@ export default function НастройкиScreen() {
               </View>
               <View style={styles.profileInfo}>
                 <ThemedText type="subtitle">
-                  {isAuthenticated && user ? user.name : 'Гость'}
+                  {isAuthenticated && user ? user.name : t('settings.guest')}
                 </ThemedText>
                 <ThemedText type="caption">
-                  {isAuthenticated && user ? user.email : 'Войдите для синхронизации данных'}
+                  {isAuthenticated && user ? user.email : t('settings.loginPrompt')}
                 </ThemedText>
               </View>
               <IconSymbol name="chevron.right" size={20} color={colors.muted} />
@@ -223,29 +245,14 @@ export default function НастройкиScreen() {
         {/* Account Section - only show if authenticated */}
         {isAuthenticated && (
           <Animated.View entering={FadeInUp.delay(150).duration(400)}>
-            <ThemedText style={styles.sectionTitle}>Аккаунт</ThemedText>
+            <ThemedText style={styles.sectionTitle}>{t('settings.account')}</ThemedText>
             <Card variant="default">
-              <SettingRow
-                icon="person.fill"
-                iconColor={colors.tint}
-                label="✏️ Редактировать профиль"
-                onPress={() => Alert.alert('Редактирование профиля', 'Скоро будет доступно!')}
-                colors={colors}
-              />
-              <SettingRow
-                icon="lock.fill"
-                iconColor={colors.warning}
-                label="🔐 Сменить пароль"
-                onPress={() => Alert.alert('Смена пароля', 'Скоро будет доступно!')}
-                colors={colors}
-              />
-              <SettingRow
-                icon="rectangle.portrait.and.arrow.right"
-                iconColor={colors.danger}
-                label="🚪 Выйти"
-                onPress={handleLogout}
-                colors={colors}
-              />
+              <SettingRow icon="person.fill" iconColor={colors.tint} label={t('settings.editProfile')}
+                onPress={() => Alert.alert(t('settings.editProfile'), t('common.comingSoon'))} colors={colors} />
+              <SettingRow icon="lock.fill" iconColor={colors.warning} label={t('settings.changePassword')}
+                onPress={() => Alert.alert(t('settings.changePassword'), t('common.comingSoon'))} colors={colors} />
+              <SettingRow icon="rectangle.portrait.and.arrow.right" iconColor={colors.danger}
+                label={t('settings.logout')} onPress={handleLogout} colors={colors} />
             </Card>
           </Animated.View>
         )}
@@ -253,21 +260,18 @@ export default function НастройкиScreen() {
         {/* Sign In prompt for guests */}
         {!isAuthenticated && (
           <Animated.View entering={FadeInUp.delay(150).duration(400)}>
-            <ThemedText style={styles.sectionTitle}>Аккаунт</ThemedText>
+            <ThemedText style={styles.sectionTitle}>{t('settings.account')}</ThemedText>
             <Card variant="default">
-              <Pressable 
-                style={styles.signInPrompt}
-                onPress={() => router.push('/login' as any)}
-              >
+              <Pressable style={styles.signInPrompt} onPress={() => router.push('/login' as any)}>
                 <View style={[styles.signInIcon, { backgroundColor: colors.tint + '20' }]}>
                   <IconSymbol name="person.badge.plus" size={24} color={colors.tint} />
                 </View>
                 <View style={styles.signInText}>
                   <ThemedText style={[styles.signInTitle, { color: colors.tint }]}>
-                    Войти в аккаунт
+                    {t('settings.signIn')}
                   </ThemedText>
                   <ThemedText style={[styles.signInSubtitle, { color: colors.textSecondary }]}>
-                    Синхронизируйте данные между устройствами
+                    {t('settings.signInSubtitle')}
                   </ThemedText>
                 </View>
                 <IconSymbol name="chevron.right" size={20} color={colors.tint} />
@@ -278,58 +282,67 @@ export default function НастройкиScreen() {
 
         {/* App Preferences */}
         <Animated.View entering={FadeInUp.delay(200).duration(400)}>
-          <ThemedText style={styles.sectionTitle}>Настройки приложения</ThemedText>
+          <ThemedText style={styles.sectionTitle}>{t('settings.appSettings')}</ThemedText>
           <Card variant="default">
-            <SettingRow
-              icon="bell.fill"
-              iconColor={colors.accent}
-              label="🔔 Уведомления"
-              hasToggle
-              toggleValue={notif.enabled}
-              onToggle={handleNotifToggle}
-              colors={colors}
-            />
-            <SettingRow
-              icon="clock.fill"
-              iconColor={colors.warning}
-              label="⏰ Время напоминания"
-              value={notif.timeString}
-              onPress={() => setShowTimePicker(true)}
-              colors={colors}
-            />
+            <SettingRow icon="bell.fill" iconColor={colors.accent} label={t('settings.notifications')}
+              hasToggle toggleValue={notif.enabled} onToggle={handleNotifToggle} colors={colors} />
+            <SettingRow icon="clock.fill" iconColor={colors.warning} label={t('settings.reminderTime')}
+              value={notif.timeString} onPress={() => setShowTimePicker(true)} colors={colors} />
             {notif.enabled && Platform.OS !== 'web' && (
-              <SettingRow
-                icon="paperplane.fill"
-                iconColor={colors.success}
-                label="✉️ Отправить тестовое уведомление"
-                onPress={notif.sendTestNotification}
-                colors={colors}
-              />
+              <SettingRow icon="paperplane.fill" iconColor={colors.success} label={t('settings.testNotif')}
+                onPress={notif.sendTestNotification} colors={colors} />
             )}
-            <SettingRow
-              icon="moon.fill"
-              iconColor={colors.tint}
-              label="🌙 Тёмная тема"
-              hasToggle
-              toggleValue={isDark}
-              onToggle={toggleTheme}
-              colors={colors}
-            />
+            <SettingRow icon="moon.fill" iconColor={colors.tint} label={t('settings.darkMode')}
+              hasToggle toggleValue={isDark} onToggle={toggleTheme} colors={colors} />
+            <SettingRow icon="globe" iconColor={'#3B82F6'} label={t('settings.language')}
+              value={LANG_OPTIONS.find(l => l.value === language)?.flag + ' ' + LANG_OPTIONS.find(l => l.value === language)?.label}
+              onPress={() => setShowLangPicker(true)} colors={colors} />
           </Card>
         </Animated.View>
 
-        {/* Time Picker Modal */}
-        <Modal
-          visible={showTimePicker}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setShowTimePicker(false)}
-        >
+        {/* Language Picker Modal */}
+        <Modal visible={showLangPicker} transparent animationType="fade" onRequestClose={() => setShowLangPicker(false)}>
           <View style={styles.modalOverlay}>
             <View style={[styles.timePickerCard, { backgroundColor: colors.cardBackground }]}>
-              <ThemedText type="subtitle" style={styles.timePickerTitle}>⏰ Время напоминания</ThemedText>
+              <ThemedText type="subtitle" style={styles.timePickerTitle}>{t('settings.languageTitle')}</ThemedText>
+              <View style={{ gap: 10, marginTop: 12 }}>
+                {LANG_OPTIONS.map((opt) => (
+                  <Pressable
+                    key={opt.value}
+                    onPress={() => { setLanguage(opt.value); setShowLangPicker(false); }}
+                    style={[
+                      styles.langOption,
+                      { backgroundColor: language === opt.value ? colors.tint + '20' : colors.cardBorder,
+                        borderColor: language === opt.value ? colors.tint : 'transparent',
+                        borderWidth: 1.5 }
+                    ]}
+                  >
+                    <ThemedText style={{ fontSize: 24 }}>{opt.flag}</ThemedText>
+                    <ThemedText style={{ fontSize: 16, fontWeight: language === opt.value ? '700' : '400',
+                      color: language === opt.value ? colors.tint : colors.text }}>
+                      {opt.label}
+                    </ThemedText>
+                    {language === opt.value && (
+                      <IconSymbol name="checkmark" size={18} color={colors.tint} style={{ marginLeft: 'auto' }} />
+                    )}
+                  </Pressable>
+                ))}
+              </View>
+              <Pressable style={[styles.timePickerBtn, { backgroundColor: colors.cardBorder, marginTop: 16, alignSelf: 'stretch' }]}
+                onPress={() => setShowLangPicker(false)}>
+                <ThemedText style={{ fontWeight: '600', color: colors.text }}>{t('common.close')}</ThemedText>
+              </Pressable>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Time Picker Modal */}
+        <Modal visible={showTimePicker} transparent animationType="fade" onRequestClose={() => setShowTimePicker(false)}>
+          <View style={styles.modalOverlay}>
+            <View style={[styles.timePickerCard, { backgroundColor: colors.cardBackground }]}>
+              <ThemedText type="subtitle" style={styles.timePickerTitle}>{t('settings.timePickerTitle')}</ThemedText>
               <ThemedText style={[styles.timePickerSub, { color: colors.textSecondary }]}>
-                Ежедневное напоминание ложиться спать
+                {t('settings.dailyReminder')}
               </ThemedText>
               <View style={styles.timeRow}>
                 {/* Hours */}
@@ -378,17 +391,11 @@ export default function НастройкиScreen() {
               </View>
 
               <View style={styles.timePickerActions}>
-                <Pressable
-                  style={[styles.timePickerBtn, { backgroundColor: colors.cardBorder }]}
-                  onPress={() => setShowTimePicker(false)}
-                >
-                  <ThemedText style={{ fontWeight: '600', color: colors.text }}>Отмена</ThemedText>
+                <Pressable style={[styles.timePickerBtn, { backgroundColor: colors.cardBorder }]} onPress={() => setShowTimePicker(false)}>
+                  <ThemedText style={{ fontWeight: '600', color: colors.text }}>{t('common.cancel')}</ThemedText>
                 </Pressable>
-                <Pressable
-                  style={[styles.timePickerBtn, { backgroundColor: colors.tint }]}
-                  onPress={handleSaveTime}
-                >
-                  <ThemedText style={{ fontWeight: '700', color: '#FFFFFF' }}>Сохранить</ThemedText>
+                <Pressable style={[styles.timePickerBtn, { backgroundColor: colors.tint }]} onPress={handleSaveTime}>
+                  <ThemedText style={{ fontWeight: '700', color: '#FFFFFF' }}>{t('common.save')}</ThemedText>
                 </Pressable>
               </View>
             </View>
@@ -397,94 +404,45 @@ export default function НастройкиScreen() {
 
         {/* Data & Sync */}
         <Animated.View entering={FadeInUp.delay(300).duration(400)}>
-          <ThemedText style={styles.sectionTitle}>Данные и синхронизация</ThemedText>
+          <ThemedText style={styles.sectionTitle}>{t('settings.dataSync')}</ThemedText>
           <Card variant="default">
-            <SettingRow
-              icon="icloud.fill"
-              iconColor={colors.accent}
-              label="☁️ Источник данных"
-              value="Локально"
-              onPress={() => setShowBackendInput(!showBackendInput)}
-              colors={colors}
-            />
-            
+            <SettingRow icon="icloud.fill" iconColor={colors.accent} label={t('settings.dataSource')}
+              value={t('settings.local')} onPress={() => setShowBackendInput(!showBackendInput)} colors={colors} />
             {showBackendInput && (
               <View style={styles.backendInputContainer}>
-                <TextInput
-                  value={backendUrl}
-                  onChangeText={setBackendUrl}
-                  placeholder="https://api.example.com"
-                  placeholderTextColor={colors.muted}
-                  style={[styles.backendInput, { 
-                    color: colors.text,
-                    backgroundColor: colors.inputBackground,
-                    borderColor: colors.inputBorder,
-                  }]}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-                <Pressable 
-                  onPress={handleSaveBackend}
-                  style={[styles.saveButton, { backgroundColor: colors.tint }]}
-                >
-                  <ThemedText style={styles.saveButtonText}>Сохранить</ThemedText>
+                <TextInput value={backendUrl} onChangeText={setBackendUrl}
+                  placeholder="https://api.example.com" placeholderTextColor={colors.muted}
+                  style={[styles.backendInput, { color: colors.text, backgroundColor: colors.inputBackground, borderColor: colors.inputBorder }]}
+                  autoCapitalize="none" autoCorrect={false} />
+                <Pressable onPress={() => { Alert.alert('Info', t('settings.backendInfo')); setShowBackendInput(false); }}
+                  style={[styles.saveButton, { backgroundColor: colors.tint }]}>
+                  <ThemedText style={styles.saveButtonText}>{t('common.save')}</ThemedText>
                 </Pressable>
               </View>
             )}
-            
-            <SettingRow
-              icon="arrow.triangle.2.circlepath"
-              iconColor={colors.success}
-              label="📤 Экспорт данных"
-              onPress={() => Alert.alert('Экспорт', 'Функция экспорта скоро будет доступна!')}
-              colors={colors}
-            />
-            <SettingRow
-              icon="trash.fill"
-              iconColor={colors.danger}
-              label="🗑️ Очистить все данные"
-              onPress={handleClearData}
-              colors={colors}
-            />
+            <SettingRow icon="arrow.triangle.2.circlepath" iconColor={colors.success} label={t('settings.export')}
+              onPress={handleExport} colors={colors} />
+            <SettingRow icon="trash.fill" iconColor={colors.danger} label={t('settings.clearData')}
+              onPress={handleClearData} colors={colors} />
           </Card>
         </Animated.View>
 
         {/* About */}
         <Animated.View entering={FadeInUp.delay(400).duration(400)}>
-          <ThemedText style={styles.sectionTitle}>О приложении</ThemedText>
+          <ThemedText style={styles.sectionTitle}>{t('settings.about')}</ThemedText>
           <Card variant="outlined">
-            <SettingRow
-              icon="info.circle.fill"
-              iconColor={colors.muted}
-              label="ℹ️ Версия"
-              value="1.0.0"
-              colors={colors}
-            />
-            <SettingRow
-              icon="doc.text.fill"
-              iconColor={colors.muted}
-              label="📜 Условия использования"
-              onPress={() => Alert.alert('Условия', 'Условия использования')}
-              colors={colors}
-            />
-            <SettingRow
-              icon="hand.raised.fill"
-              iconColor={colors.muted}
-              label="🔒 Политика конфиденциальности"
-              onPress={() => Alert.alert('Конфиденциальность', 'Политика конфиденциальности')}
-              colors={colors}
-            />
+            <SettingRow icon="info.circle.fill" iconColor={colors.muted} label={t('settings.version')} value={Constants.expoConfig?.version ?? '1.0.0'} colors={colors} />
+            <SettingRow icon="doc.text.fill" iconColor={colors.muted} label={t('settings.terms')}
+              onPress={() => Alert.alert(t('settings.terms'), t('settings.terms'))} colors={colors} />
+            <SettingRow icon="hand.raised.fill" iconColor={colors.muted} label={t('settings.privacy')}
+              onPress={() => Alert.alert(t('settings.privacy'), t('settings.privacy'))} colors={colors} />
           </Card>
         </Animated.View>
 
         {/* App Info */}
         <Animated.View entering={FadeInUp.delay(500).duration(400)} style={styles.footer}>
-          <ThemedText style={[styles.footerText, { color: colors.muted }]}>
-            SleepMind · Спите лучше. Без стресса.
-          </ThemedText>
-          <ThemedText style={[styles.footerSubtext, { color: colors.muted }]}>
-            Сделано с 💜 для лучшего сна
-          </ThemedText>
+          <ThemedText style={[styles.footerText, { color: colors.muted }]}>{t('settings.footer')}</ThemedText>
+          <ThemedText style={[styles.footerSubtext, { color: colors.muted }]}>{t('settings.footerSub')}</ThemedText>
         </Animated.View>
 
         <View style={{ height: 32 }} />
@@ -604,6 +562,14 @@ const styles = StyleSheet.create({
   saveButtonText: {
     color: '#FFFFFF',
     fontWeight: '600',
+  },
+  langOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 14,
   },
   footer: {
     alignItems: 'center',

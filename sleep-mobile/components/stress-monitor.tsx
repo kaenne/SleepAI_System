@@ -17,11 +17,13 @@ import {
   interpretHrv,
   StressLevel,
 } from '@/hooks/use-stress-monitor';
+import { useTranslation } from '@/contexts/i18n-context';
 
 export function StressMonitor() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const colors = Colors[colorScheme ?? 'light'];
+  const { t } = useTranslation();
 
   const {
     latestStress,
@@ -121,17 +123,17 @@ export function StressMonitor() {
     <View style={[styles.container, { backgroundColor: colors.cardBackground }]}>
       <View style={styles.header}>
         <Text style={[styles.title, { color: colors.text }]}>
-          Мониторинг стресса
+          {t('stress.title')}
         </Text>
         <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-          Измерьте уровень стресса по вариабельности пульса
+          {t('stress.subtitle')}
         </Text>
       </View>
 
       {/* Measurement Button */}
       <View style={styles.measureSection}>
         <Text style={[styles.measureHint, { color: colors.textSecondary, marginBottom: 12 }]}>
-          Включите вспышку и приложите палец к камере
+          {t('stress.measureHint')}
         </Text>
         <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
           <TouchableOpacity
@@ -149,12 +151,12 @@ export function StressMonitor() {
             {isMeasuring ? (
               <>
                 <ActivityIndicator size="small" color="#fff" />
-                <Text style={styles.measureButtonText}>Измерение...</Text>
+                <Text style={styles.measureButtonText}>{t('stress.measuring')}</Text>
               </>
             ) : (
               <>
                 <Text style={styles.heartIcon}>❤️</Text>
-                <Text style={styles.measureButtonText}>Измерить HRV</Text>
+                <Text style={styles.measureButtonText}>{t('stress.measureBtn')}</Text>
               </>
             )}
           </TouchableOpacity>
@@ -162,7 +164,7 @@ export function StressMonitor() {
 
         {isMeasuring && (
           <Text style={[styles.measureHint, { color: colors.textSecondary }]}>
-            Оставайтесь неподвижны...
+            {t('stress.stillHint')}
           </Text>
         )}
       </View>
@@ -195,11 +197,10 @@ export function StressMonitor() {
               >
                 <Text style={styles.levelText}>
                   {measurementResult.level === 'LOW'
-                    ? 'Низкий'
+                    ? t('stress.level_low')
                     : measurementResult.level === 'MEDIUM'
-                    ? 'Средний'
-                    : 'Высокий'}{' '}
-                  стресс
+                    ? t('stress.level_medium')
+                    : t('stress.level_high')}{t('stress.stressSuffix')}
                 </Text>
               </View>
             </View>
@@ -219,14 +220,14 @@ export function StressMonitor() {
           ]}
         >
           <Text style={[styles.latestLabel, { color: colors.textSecondary }]}>
-            Последнее измерение
+            {t('stress.latestLabel')}
           </Text>
           <View style={styles.latestData}>
             <Text style={[styles.latestHrv, { color: colors.text }]}>
               HRV: {latestStress.hrvScore}
             </Text>
             <Text style={[styles.latestTime, { color: colors.textSecondary }]}>
-              {formatDate(latestStress.timestamp)} в{' '}
+              {formatDate(latestStress.timestamp)}{' '}
               {formatTime(latestStress.timestamp)}
             </Text>
           </View>
@@ -239,10 +240,10 @@ export function StressMonitor() {
             <Text style={styles.levelText}>
               {getStressEmoji(latestStress.stressLevel)}{' '}
               {latestStress.stressLevel === 'LOW'
-                ? 'Низкий'
+                ? t('stress.level_low')
                 : latestStress.stressLevel === 'MEDIUM'
-                ? 'Средний'
-                : 'Высокий'}
+                ? t('stress.level_medium')
+                : t('stress.level_high')}
             </Text>
           </View>
         </View>
@@ -252,7 +253,7 @@ export function StressMonitor() {
       {history.length > 0 && (
         <View style={styles.historySection}>
           <Text style={[styles.historyTitle, { color: colors.text }]}>
-            История измерений
+            {t('stress.historyTitle')}
           </Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             {history.slice(0, 7).map((item, index) => (
@@ -292,16 +293,16 @@ export function StressMonitor() {
         ]}
       >
         <Text style={[styles.tipsTitle, { color: colors.text }]}>
-          💡 Советы по снижению стресса
+          {t('stress.tipsTitle')}
         </Text>
         <Text style={[styles.tipText, { color: colors.textSecondary }]}>
-          • Попробуйте дыхательную технику 4-7-8
+          {t('stress.tip1')}
         </Text>
         <Text style={[styles.tipText, { color: colors.textSecondary }]}>
-          • Прогуляйтесь на свежем воздухе 15 минут
+          {t('stress.tip2')}
         </Text>
         <Text style={[styles.tipText, { color: colors.textSecondary }]}>
-          • Сделайте короткую медитацию
+          {t('stress.tip3')}
         </Text>
       </View>
     </View>

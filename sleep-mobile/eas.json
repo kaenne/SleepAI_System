@@ -13,7 +13,8 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "http://localhost:8080"
+        "_NOTE": "Set EXPO_PUBLIC_API_BASE_URL via 'eas secret:create' or override per developer LAN IP. Hardcoded values break across machines.",
+        "EXPO_PUBLIC_API_BASE_URL": ""
       }
     },
     "production": {}
