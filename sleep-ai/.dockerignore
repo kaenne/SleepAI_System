@@ -1,0 +1,9 @@
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+datasets_raw/
+multilevel-monitoring-of-activity-and-sleep-in-healthy-people-1.0.0/
+*.csv
+.idea/
