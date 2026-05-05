@@ -21,6 +21,9 @@ sleep-mobile/android/
 sleep-mobile/.env
 sleep-mobile/.env.*
 
+# Environment secrets — never commit .env
+.env
+
 # IDE
 .vscode/
 *.iml
@@ -33,3 +36,10 @@ Thumbs.db
 
 # Context files (generated)
 *_context.txt
+
+# Claude Code session state — local-only
+.claude/
+
+# Raw datasets (downloaded from Kaggle/PhysioNet — too large for git)
+sleep-ai/multilevel-monitoring-of-activity-and-sleep-in-healthy-people-1.0.0/
+sleep-ai/datasets_raw/
