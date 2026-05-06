@@ -299,36 +299,31 @@ export default function ChatScreen() {
   }, []);
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[styles.container, { backgroundColor: isDark ? '#11121C' : colors.background }]}>
       {/* Header */}
-      <LinearGradient
-        colors={[colors.headerGradientStart, colors.headerGradientMid, colors.headerGradientEnd]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.header}
-      >
+      <View style={[styles.header, { backgroundColor: isDark ? '#161724' : colors.cardBackground }]}>
         <SafeAreaView style={{ flex: 1 }}>
           <Animated.View entering={FadeInDown.duration(400)} style={styles.headerContent}>
             <View style={styles.headerLeft}>
-              <View style={styles.avatarContainer}>
-                <IconSymbol name="bolt.horizontal.circle.fill" size={32} color="#FFFFFF" />
+              <View style={[styles.avatarContainer, { backgroundColor: isDark ? '#2D294D' : '#EDE9FE' }]}>
+                <IconSymbol name="moon.fill" size={24} color="#FBBF24" />
               </View>
               <View>
-                <ThemedText style={styles.headerTitle}>{t('chat.title')}</ThemedText>
-                <ThemedText style={[styles.headerSubtitle, { color: 'rgba(255,255,255,0.8)' }]}>{t('chat.subtitle')}</ThemedText>
+                <ThemedText style={[styles.headerTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>{t('chat.title')}</ThemedText>
+                <View style={styles.onlineIndicator}>
+                  <View style={styles.onlineDot} />
+                  <ThemedText style={[styles.headerSubtitle, { color: colors.muted, marginLeft: 6 }]}>Online · syncs with Health</ThemedText>
+                </View>
               </View>
             </View>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <Pressable onPress={clearHistory} style={styles.clearBtn}>
-                <IconSymbol name="trash" size={16} color="rgba(255,255,255,0.8)" />
+                <IconSymbol name="trash" size={18} color={isDark ? '#6B7280' : '#9CA3AF'} />
               </Pressable>
-              <View style={styles.onlineIndicator}>
-                <View style={styles.onlineDot} />
-              </View>
             </View>
           </Animated.View>
         </SafeAreaView>
-      </LinearGradient>
+      </View>
 
       <KeyboardAvoidingView
         style={styles.chatContainer}
@@ -348,46 +343,68 @@ export default function ChatScreen() {
             const isNew = newMessageIds.current.has(message.id);
             // Remove the hardcoded English prefix if it exists in the message content
             let displayMessage = message.text;
-            if (!message.isUser && displayMessage.startsWith('*Based on your data:')) {
-               displayMessage = displayMessage.replace(/\*Based on your data: [^*]+\*\n\n/, '');
-               displayMessage = displayMessage.replace(/^\n/, '');
+            let hasDataSignal = false;
+            
+            const regexResult = displayMessage.match(/\*Based on your data:?([^*]*)\*/);
+            if (regexResult) {
+               hasDataSignal = true;
+               displayMessage = displayMessage.replace(/\*Based on your data:?([^*]*)\*/, '');
+               displayMessage = displayMessage.replace(/^\n+/, '');
             }
 
             return (
               <Animated.View
                 key={message.id}
                 entering={isNew ? FadeInUp.duration(280).springify() : undefined}
-                style={[
-                  styles.messageBubble,
-                  message.isUser ? styles.userBubble : styles.aiBubble,
-                  {
-                    backgroundColor: message.isUser ? 'transparent' : (isDark ? '#2C2C3E' : '#F5F5F5'),
-                    borderColor: 'transparent',
-                    overflow: 'hidden',
-                  },
-                ]}
+                style={{ width: '100%', marginBottom: 16 }}
               >
-                {message.isUser && (
-                  <LinearGradient
-                    colors={[colors.headerGradientStart, colors.tint]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={StyleSheet.absoluteFill}
-                  />
+                {!message.isUser && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4, marginLeft: 4 }}>
+                    <ThemedText style={{ color: colors.tint, fontSize: 11, fontWeight: '700', textTransform: 'uppercase' }}>
+                      COACH
+                    </ThemedText>
+                    <ThemedText style={{ color: colors.muted, fontSize: 11, marginLeft: 6 }}>
+                      · {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </ThemedText>
+                  </View>
                 )}
-                <FormattedMessageText
-                  text={displayMessage}
-                  color={message.isUser ? '#FFFFFF' : colors.text}
-                  isUser={message.isUser}
-                />
-                <ThemedText
+
+                <View
                   style={[
-                    styles.messageTime,
-                    { color: message.isUser ? 'rgba(255,255,255,0.7)' : colors.muted },
+                    styles.messageBubble,
+                    message.isUser ? styles.userBubble : styles.aiBubble,
+                    {
+                      backgroundColor: message.isUser 
+                        ? (isDark ? '#2D294D' : colors.tint) 
+                        : (isDark ? '#1C1D2C' : '#F4F5F8'),
+                    },
                   ]}
                 >
-                  {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </ThemedText>
+                  <FormattedMessageText
+                    text={displayMessage.trim()}
+                    color={message.isUser ? '#FFFFFF' : (isDark ? '#FFFFFF' : colors.text)}
+                    isUser={message.isUser}
+                  />
+                  {hasDataSignal && !message.isUser && (
+                    <View style={styles.dataSignalContainer}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <IconSymbol name="waveform.path.ecg" size={14} color={colors.tint} />
+                        <ThemedText style={{ color: colors.tint, fontSize: 12, fontWeight: '600', marginLeft: 6 }}>
+                          Based on your data
+                        </ThemedText>
+                      </View>
+                      <ThemedText style={{ color: colors.muted, fontSize: 12 }}>
+                        4 signals ⌄
+                      </ThemedText>
+                    </View>
+                  )}
+                </View>
+
+                {message.isUser && (
+                  <ThemedText style={{ color: colors.muted, fontSize: 11, alignSelf: 'flex-end', marginTop: 4, marginRight: 4 }}>
+                    {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </ThemedText>
+                )}
               </Animated.View>
             );
           })}
@@ -423,12 +440,13 @@ export default function ChatScreen() {
                   key={`sug-${i}`}
                   onPress={() => sendMessage(s)}
                   style={[styles.quickReply, {
-                    backgroundColor: isDark ? '#2C2C3E' : '#F5F5F5',
-                    borderColor: 'transparent',
+                    backgroundColor: isDark ? '#1C1635' : '#F5F5F5',
+                    borderColor: isDark ? '#3E326E' : 'transparent',
+                    borderWidth: 1,
                   }]}
                 >
-                  <ThemedText style={[styles.quickReplyText, { color: colors.text }]}>
-                    {s}
+                  <ThemedText style={[styles.quickReplyText, { color: isDark ? '#FFFFFF' : colors.text }]}>
+                    ✦ {s}
                   </ThemedText>
                 </Pressable>
               ))
@@ -437,12 +455,13 @@ export default function ChatScreen() {
                   key={key}
                   onPress={() => sendMessage(t(`chat.${key}_text` as any))}
                   style={[styles.quickReply, {
-                    backgroundColor: isDark ? '#2C2C3E' : '#F5F5F5',
-                    borderColor: 'transparent',
+                    backgroundColor: isDark ? '#1C1635' : '#F5F5F5',
+                    borderColor: isDark ? '#3E326E' : 'transparent',
+                    borderWidth: 1,
                   }]}
                 >
-                  <ThemedText style={styles.quickReplyText}>
-                    {t(`chat.${key}` as any)}
+                  <ThemedText style={[styles.quickReplyText, { color: isDark ? '#FFFFFF' : colors.text }]}>
+                    ✦ {t(`chat.${key}` as any)}
                   </ThemedText>
                 </Pressable>
               ))
@@ -454,9 +473,9 @@ export default function ChatScreen() {
           style={[
             styles.inputContainer,
             {
-              backgroundColor: isDark ? '#1E1E2D' : '#FFFFFF',
-              borderColor: isDark ? '#2C2C3E' : '#E5E7EB',
-              marginBottom: Math.max(insets.bottom, Spacing.md),
+              backgroundColor: isDark ? '#171826' : '#FFFFFF',
+              borderColor: isDark ? '#27283B' : '#E5E7EB',
+              marginBottom: Math.max(insets.bottom + 8, Spacing.md + 8),
             },
           ]}
         >
@@ -464,13 +483,13 @@ export default function ChatScreen() {
             value={inputText}
             onChangeText={setInputText}
             placeholder={t('chat.placeholder')}
-            placeholderTextColor={colors.muted}
-            style={[styles.input, { color: colors.text }]}
+            placeholderTextColor={isDark ? '#8F90A6' : colors.muted}
+            style={[styles.input, { color: isDark ? '#FFFFFF' : colors.text }]}
             multiline
             maxLength={500}
             returnKeyType="default"
           />
-          <SendButton onPress={() => sendMessage()} color={colors.tint} />
+          <SendButton onPress={() => sendMessage()} color={isDark ? '#4D3C7B' : colors.tint} />
         </View>
       </KeyboardAvoidingView>
     </View>
@@ -609,6 +628,18 @@ const styles = StyleSheet.create({
   quickReplyText: {
     fontSize: 13,
     fontWeight: '500',
+  },
+  dataSignalContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    backgroundColor: 'rgba(124, 58, 237, 0.1)',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(124, 58, 237, 0.2)',
   },
   inputContainer: {
     flexDirection: 'row',
