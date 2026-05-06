@@ -36,7 +36,7 @@ export function StressMonitor() {
   const [measurementResult, setMeasurementResult] = useState<{
     hrv: number;
     level: StressLevel;
-    description: string;
+    descriptionKey: string;
   } | null>(null);
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -94,7 +94,7 @@ export function StressMonitor() {
       setMeasurementResult({
         hrv: hrvValue,
         level: interpretation.level,
-        description: interpretation.description,
+        descriptionKey: interpretation.descriptionKey,
       });
     } catch (e) {
       console.error('Measurement failed:', e);
@@ -155,7 +155,6 @@ export function StressMonitor() {
               </>
             ) : (
               <>
-                <Text style={styles.heartIcon}>❤️</Text>
                 <Text style={styles.measureButtonText}>{t('stress.measureBtn')}</Text>
               </>
             )}
@@ -182,9 +181,6 @@ export function StressMonitor() {
           ]}
         >
           <View style={styles.resultHeader}>
-            <Text style={styles.resultEmoji}>
-              {getStressEmoji(measurementResult.level)}
-            </Text>
             <View style={styles.resultValues}>
               <Text style={[styles.hrvValue, { color: colors.text }]}>
                 HRV: {measurementResult.hrv}
@@ -206,7 +202,7 @@ export function StressMonitor() {
             </View>
           </View>
           <Text style={[styles.resultDescription, { color: colors.text }]}>
-            {measurementResult.description}
+            {t(measurementResult.descriptionKey as any)}
           </Text>
         </Animated.View>
       )}

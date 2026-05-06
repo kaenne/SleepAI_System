@@ -44,14 +44,15 @@ export function useBackendStatus() {
         lastCheckedAt: new Date().toISOString(),
         lastError: res.ok ? null : 'Healthcheck failed',
       }));
-    } catch (e: any) {
+    } catch (e: unknown) {
+      const err = e as { message?: string };
       setStatus((s) => ({
         ...s,
         isConfigured: true,
         isOnline: false,
         isChecking: false,
         lastCheckedAt: new Date().toISOString(),
-        lastError: e?.message ?? 'Healthcheck failed',
+        lastError: err?.message ?? 'Healthcheck failed',
       }));
     }
   }, []);

@@ -38,7 +38,7 @@ function FactorBar({
     width.value = withTiming(fillRatio, { duration: 900 });
   }, [fillRatio, width]);
 
-  const barStyle = useAnimatedStyle(() => ({ width: `${width.value * 100}%` as any }));
+  const barStyle = useAnimatedStyle(() => ({ width: `${width.value * 100}%` }));
 
   return (
     <View style={factorStyles.row}>
@@ -79,7 +79,7 @@ export function AiPredictionCard({ entry }: Props) {
   const [error, setError] = React.useState(false);
 
   const qualityWidth = useSharedValue(0);
-  const qualityStyle = useAnimatedStyle(() => ({ width: `${qualityWidth.value}%` as any }));
+  const qualityStyle = useAnimatedStyle(() => ({ width: `${qualityWidth.value}%` }));
 
   React.useEffect(() => {
     setLoading(true);

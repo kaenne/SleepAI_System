@@ -4,10 +4,11 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { en } from '../locales/en';
 import { kz } from '../locales/kz';
 import { ru } from '../locales/ru';
+import { StorageKeys } from '@/constants/storage';
 
 export type Language = 'ru' | 'en' | 'kz';
 
-const LANG_KEY = 'sleepai_language';
+const LANG_KEY = StorageKeys.LANGUAGE;
 
 const TRANSLATIONS = { ru, en, kz };
 
@@ -17,21 +18,24 @@ export const LANG_OPTIONS: { value: Language; label: string; flag: string }[] = 
   { value: 'kz', label: 'Қазақша', flag: '🇰🇿' },
 ];
 
-function getNestedValue(obj: Record<string, any>, path: string): string {
-  const val = path.split('.').reduce((acc: any, key) => acc?.[key], obj);
-  return typeof val === 'string' ? val : path;
+function resolvePath(obj: Record<string, any>, path: string): unknown {
+  return path.split('.').reduce((acc: any, key) => acc?.[key], obj);
 }
 
 type I18nContextType = {
   language: Language;
   setLanguage: (lang: Language) => void;
+  /** Translates a single string key. Returns the key itself if missing. */
   t: (key: string, params?: Record<string, string | number>) => string;
+  /** Translates a key whose value is a string array (e.g. lists of tips). Returns [] if missing. */
+  tArray: (key: string) => string[];
 };
 
 const I18nContext = createContext<I18nContextType>({
   language: 'ru',
   setLanguage: () => {},
   t: (key) => key,
+  tArray: () => [],
 });
 
 export function I18nProvider({ children }: { children: React.ReactNode }) {
@@ -49,19 +53,26 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
   };
 
   const t = (key: string, params?: Record<string, string | number>): string => {
-    let text = getNestedValue(TRANSLATIONS[language] as any, key);
-    // fallback to Russian if key not found in current language
-    if (text === key) text = getNestedValue(TRANSLATIONS.ru as any, key);
+    let val = resolvePath(TRANSLATIONS[language] as any, key);
+    // Fallback to Russian if missing in active language.
+    if (val === undefined) val = resolvePath(TRANSLATIONS.ru as any, key);
+    if (typeof val !== 'string') return key;
     if (params) {
-      Object.entries(params).forEach(([k, v]) => {
-        text = text.replace(new RegExp(`\\{\\{${k}\\}\\}`, 'g'), String(v));
-      });
+      for (const [k, v] of Object.entries(params)) {
+        val = (val as string).replace(new RegExp(`\\{\\{${k}\\}\\}`, 'g'), String(v));
+      }
     }
-    return text;
+    return val as string;
+  };
+
+  const tArray = (key: string): string[] => {
+    let val = resolvePath(TRANSLATIONS[language] as any, key);
+    if (val === undefined) val = resolvePath(TRANSLATIONS.ru as any, key);
+    return Array.isArray(val) ? (val as string[]) : [];
   };
 
   return (
-    <I18nContext.Provider value={{ language, setLanguage, t }}>
+    <I18nContext.Provider value={{ language, setLanguage, t, tArray }}>
       {children}
     </I18nContext.Provider>
   );

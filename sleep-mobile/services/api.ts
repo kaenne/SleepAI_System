@@ -29,9 +29,10 @@ async function requestJson<T>(
 
   try {
     return await httpRequest<T>(path, { ...rest, headers: await buildHeaders(), timeoutMs });
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const errorMsg = err as { status?: number };
     // Refresh-and-retry only on 401 with auth requested.
-    if (err?.status !== 401 || !requireAuth) throw err;
+    if (errorMsg?.status !== 401 || !requireAuth) throw err;
 
     try {
       await authApi.refreshToken();
@@ -108,6 +109,21 @@ export type AiPredictionFactor = {
   impact: number;  // % пунктов качества (+ улучшает, - ухудшает)
 };
 
+export type StressLevel = 'LOW' | 'MEDIUM' | 'HIGH' | 'NO_DATA';
+
+export type StressDataDto = {
+  id: number;
+  hrvScore: number;
+  stressLevel: StressLevel;
+  timestamp: string;
+};
+
+export type StressAverageDto = {
+  averageHrv: number;
+  stressLevel: StressLevel;
+  period: string;
+};
+
 export type AiPredictionResponse = {
   predictedQuality: number;
   remPercentage: number;
@@ -182,6 +198,32 @@ export const api = {
     return requestJson<{ averageStress: number; trend: string; insights: string[] }>(
       `/api/analysis/stress${query}`
     );
+  },
+
+  // ============ Stress Data (HRV) ============
+
+  async getLatestStress() {
+    return requestJson<StressDataDto | { message: string }>('/api/stress/latest');
+  },
+
+  async getStressHistory(params?: { page?: number; size?: number }) {
+    const query = new URLSearchParams();
+    if (params?.page !== undefined) query.set('page', params.page.toString());
+    if (params?.size !== undefined) query.set('size', params.size.toString());
+    const qs = query.toString();
+    return requestJson<StressDataDto[]>(`/api/stress/history${qs ? `?${qs}` : ''}`);
+  },
+
+  async getStressAverage(days: number = 7) {
+    return requestJson<StressAverageDto>(`/api/stress/average?days=${days}`);
+  },
+
+  async saveStress(hrvScore: number) {
+    return requestJson<StressDataDto>('/api/stress', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ hrvScore }),
+    });
   },
 
   // ============ AI Chat ============

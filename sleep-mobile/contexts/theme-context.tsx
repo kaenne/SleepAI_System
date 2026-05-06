@@ -1,8 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as React from 'react';
 import { useColorScheme as useSystemColorScheme } from 'react-native';
+import { StorageKeys } from '@/constants/storage';
 
-const THEME_KEY = 'sleepai_theme_override';
+const THEME_KEY = StorageKeys.THEME_OVERRIDE;
 
 type ColorSchemeName = 'light' | 'dark';
 

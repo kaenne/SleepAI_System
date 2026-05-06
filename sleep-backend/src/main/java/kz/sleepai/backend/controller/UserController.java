@@ -1,6 +1,9 @@
 package kz.sleepai.backend.controller;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
@@ -24,6 +27,16 @@ public class UserController {
     private final JournalEntryRepository journalEntryRepository;
     private final SleepSessionRepository sleepSessionRepository;
     private final StressDataRepository stressDataRepository;
+
+    // ─── GET /api/user/all (Admin/Pagination) ───────────────────────────────
+    @GetMapping("/all")
+    public ResponseEntity<?> getAllUsers(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
+        return ResponseEntity.ok(userRepository.findAll(pageable));
+    }
 
     // ─── GET /api/user/settings ─────────────────────────────────────────────
     @GetMapping("/settings")

@@ -18,6 +18,7 @@ import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { StorageKeys } from '@/constants/storage';
 import { BorderRadius, Colors, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useTranslation } from '@/contexts/i18n-context';
@@ -42,35 +43,35 @@ export default function RegisterScreen() {
 
   const validateForm = () => {
     if (!name.trim()) {
-      setValidationError(t('register.validate_name_empty'));
+      setValidationError(t('register.validate_name_empty') as string);
       return false;
     }
     if (name.trim().length < 2) {
-      setValidationError(t('register.validate_name_short'));
+      setValidationError(t('register.validate_name_short') as string);
       return false;
     }
     if (!email.trim()) {
-      setValidationError(t('register.validate_email_empty'));
+      setValidationError(t('register.validate_email_empty') as string);
       return false;
     }
     if (!email.includes('@') || !email.includes('.')) {
-      setValidationError(t('register.validate_email_invalid'));
+      setValidationError(t('register.validate_email_invalid') as string);
       return false;
     }
     if (!password) {
-      setValidationError(t('register.validate_password_empty'));
+      setValidationError(t('register.validate_password_empty') as string);
       return false;
     }
     if (password.length < 6) {
-      setValidationError(t('register.validate_password_short'));
+      setValidationError(t('register.validate_password_short') as string);
       return false;
     }
     if (password !== confirmPassword) {
-      setValidationError(t('register.validate_passwords_mismatch'));
+      setValidationError(t('register.validate_passwords_mismatch') as string);
       return false;
     }
     if (ageText && (Number(ageText) < 10 || Number(ageText) > 100)) {
-      setValidationError(t('register.validate_age_invalid'));
+      setValidationError(t('register.validate_age_invalid') as string);
       return false;
     }
     setValidationError(null);
@@ -90,14 +91,15 @@ export default function RegisterScreen() {
       // Сохраняем возраст/пол локально для AI предсказаний
       const age = ageText ? Number(ageText) : null;
       const genderNum = gender === 'male' ? 1 : gender === 'female' ? 0 : null;
-      await AsyncStorage.setItem('sleepai_user_profile', JSON.stringify({
+      await AsyncStorage.setItem(StorageKeys.USER_PROFILE, JSON.stringify({
         age,
         gender: genderNum,
         bmiCategory: null,
       }));
       router.replace('/(tabs)');
-    } catch (e: any) {
-      Alert.alert(t('register.errorTitle'), e?.message || t('register.errorFallback'));
+    } catch (e: unknown) {
+      const err = e as { message?: string };
+      Alert.alert(t('register.errorTitle') as string, err?.message || (t('register.errorFallback') as string));
     }
   };
 
@@ -149,7 +151,7 @@ export default function RegisterScreen() {
                 <IconSymbol name="person.fill" size={20} color={colors.muted} />
                 <TextInput
                   style={[styles.input, { color: colors.text }]}
-                  placeholder={t('register.namePlaceholder')}
+                  placeholder={t('register.namePlaceholder') as string}
                   placeholderTextColor={colors.muted}
                   value={name}
                   onChangeText={(text) => {
@@ -180,7 +182,7 @@ export default function RegisterScreen() {
                 <IconSymbol name="envelope.fill" size={20} color={colors.muted} />
                 <TextInput
                   style={[styles.input, { color: colors.text }]}
-                  placeholder={t('register.emailPlaceholder')}
+                  placeholder={t('register.emailPlaceholder') as string}
                   placeholderTextColor={colors.muted}
                   value={email}
                   onChangeText={(text) => {
@@ -215,7 +217,7 @@ export default function RegisterScreen() {
                 <IconSymbol name="lock.fill" size={20} color={colors.muted} />
                 <TextInput
                   style={[styles.input, { color: colors.text }]}
-                  placeholder={t('register.passwordPlaceholder')}
+                  placeholder={t('register.passwordPlaceholder') as string}
                   placeholderTextColor={colors.muted}
                   value={password}
                   onChangeText={(text) => {
@@ -260,7 +262,7 @@ export default function RegisterScreen() {
                 <IconSymbol name="lock.fill" size={20} color={colors.muted} />
                 <TextInput
                   style={[styles.input, { color: colors.text }]}
-                  placeholder={t('register.confirmPlaceholder')}
+                  placeholder={t('register.confirmPlaceholder') as string}
                   placeholderTextColor={colors.muted}
                   value={confirmPassword}
                   onChangeText={(text) => {
@@ -295,7 +297,7 @@ export default function RegisterScreen() {
                 <IconSymbol name="calendar" size={20} color={colors.muted} />
                 <TextInput
                   style={[styles.input, { color: colors.text }]}
-                  placeholder={t('register.agePlaceholder')}
+                  placeholder={t('register.agePlaceholder') as string}
                   placeholderTextColor={colors.muted}
                   value={ageText}
                   onChangeText={(t) => { setAgeText(t.replace(/[^0-9]/g, '')); setValidationError(null); }}
@@ -346,10 +348,20 @@ export default function RegisterScreen() {
 
             {/* Terms */}
             <ThemedText style={[styles.terms, { color: colors.textSecondary }]}>
-              {t('register.terms')}
-              <ThemedText style={{ color: colors.tint }}>{t('register.termsLink')}</ThemedText>
-              {t('register.termsAnd')}
-              <ThemedText style={{ color: colors.tint }}>{t('register.privacyLink')}</ThemedText>
+              {t('register.terms')}{' '}
+              <ThemedText 
+                style={{ color: colors.tint }}
+                onPress={() => Alert.alert('Инфо', 'Условия использования находятся в разработке.')}
+              >
+                {t('register.termsLink')}
+              </ThemedText>
+              {' '}{t('register.termsAnd')}{' '}
+              <ThemedText 
+                style={{ color: colors.tint }}
+                onPress={() => Alert.alert('Инфо', 'Политика конфиденциальности находится в разработке.')}
+              >
+                {t('register.privacyLink')}
+              </ThemedText>
             </ThemedText>
 
             {/* Register Button */}
@@ -401,32 +413,32 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    padding: Spacing.lg,
-    justifyContent: 'center',
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.xl,
   },
   header: {
     alignItems: 'center',
-    marginBottom: Spacing.xl,
-  },
-  logoContainer: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    alignItems: 'center',
-    justifyContent: 'center',
     marginBottom: Spacing.lg,
   },
+  logoContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.md,
+  },
   title: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '700',
     marginBottom: Spacing.xs,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 14,
     textAlign: 'center',
   },
   form: {
-    gap: Spacing.md,
+    gap: Spacing.sm,
   },
   inputGroup: {
     gap: Spacing.xs,

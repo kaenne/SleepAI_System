@@ -91,12 +91,13 @@ export async function httpRequest<T>(
       if (res.status === 204) return undefined as T;
       if (isJson) return (await res.json()) as T;
       return (await res.text()) as unknown as T;
-    } catch (e: any) {
+    } catch (e: unknown) {
+      const err = e as { name?: string; message?: string; status?: number };
       // Normalise the error before considering retry.
       let normalised: ApiError;
-      if (e?.name === 'AbortError') normalised = { message: 'Request timeout' };
-      else if (e?.message && typeof e?.status === 'number') normalised = e;
-      else normalised = { message: e?.message || 'Network error' };
+      if (err?.name === 'AbortError') normalised = { message: 'Request timeout' };
+      else if (err?.message && typeof err?.status === 'number') normalised = err as ApiError;
+      else normalised = { message: err?.message || 'Network error' };
 
       lastError = normalised;
       if (attempt < retries && isRetryableError(normalised)) {

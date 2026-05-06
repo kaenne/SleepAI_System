@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '@/services/api';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export type SleepAnalysis = {
   averageSleepHours: number;
@@ -28,11 +27,6 @@ export type AnalyticsData = {
   lastUpdated: Date | null;
 };
 
-// Helper to get auth token
-async function getToken(): Promise<string> {
-  return (await AsyncStorage.getItem('sleepMind.authToken')) || '';
-}
-
 export function useAnalytics() {
   const [sleep, setSleep] = useState<SleepAnalysis | null>(null);
   const [stress, setStress] = useState<StressAnalysis | null>(null);
@@ -42,54 +36,40 @@ export function useAnalytics() {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   const fetchSleepAnalysis = useCallback(async (days: number = 7): Promise<SleepAnalysis | null> => {
-    const baseUrl = api.getBaseUrl();
-    if (!baseUrl) return null;
-
+    if (!api.getBaseUrl()) return null;
     try {
-      const token = await getToken();
-      const response = await fetch(`${baseUrl}/api/analysis/sleep?days=${days}`, {
-        headers: { 'Authorization': `Bearer ${token}` },
-      });
-      if (response.ok) return (await response.json()) as SleepAnalysis;
+      // Backend returns a different shape than UI expects — cast through unknown.
+      return (await api.getSleepAnalysis({ days })) as unknown as SleepAnalysis;
     } catch {
-      // network error
+      return null;
     }
-    return null;
   }, []);
 
   const fetchStressAnalysis = useCallback(async (days: number = 7): Promise<StressAnalysis | null> => {
-    const baseUrl = api.getBaseUrl();
-    if (!baseUrl) return null;
-
+    if (!api.getBaseUrl()) return null;
     try {
-      const token = await getToken();
-      const response = await fetch(`${baseUrl}/api/analysis/stress?days=${days}`, {
-        headers: { 'Authorization': `Bearer ${token}` },
-      });
-      if (response.ok) return (await response.json()) as StressAnalysis;
+      return (await api.getStressAnalysis({ days })) as unknown as StressAnalysis;
     } catch {
-      // network error
+      return null;
     }
-    return null;
   }, []);
 
   const refresh = useCallback(async (days: number = 7) => {
     setIsLoading(true);
     setError(null);
-
     try {
       const [sleepData, stressData] = await Promise.all([
         fetchSleepAnalysis(days),
         fetchStressAnalysis(days),
       ]);
-
       const offline = sleepData === null && stressData === null;
       setIsOffline(offline);
       setSleep(sleepData);
       setStress(stressData);
       setLastUpdated(new Date());
-    } catch (e: any) {
-      setError(e.message || 'Failed to fetch analytics');
+    } catch (e: unknown) {
+      const err = e as { message?: string };
+      setError(err?.message ?? 'Failed to fetch analytics');
       setIsOffline(true);
     } finally {
       setIsLoading(false);
@@ -98,9 +78,8 @@ export function useAnalytics() {
 
   // Load analytics on mount
   useEffect(() => {
-    refresh();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    void refresh();
+  }, [refresh]);
 
   return {
     sleep,

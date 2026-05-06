@@ -13,8 +13,7 @@
         "buildType": "apk"
       },
       "env": {
-        "_NOTE": "Set EXPO_PUBLIC_API_BASE_URL via 'eas secret:create' or override per developer LAN IP. Hardcoded values break across machines.",
-        "EXPO_PUBLIC_API_BASE_URL": ""
+        "EXPO_PUBLIC_API_BASE_URL": "https://combines-que-proposed-wrestling.trycloudflare.com"
       }
     },
     "production": {}

@@ -35,7 +35,7 @@ export function HomeActionBar({
         tint={colorScheme === 'dark' ? 'dark' : 'light'}
         style={styles.row}
       >
-        <Pressable onPress={() => router.push('/(tabs)/stats')} style={styles.btn}>
+        <Pressable onPress={() => router.navigate('/stats')} style={styles.btn}>
           <View style={[styles.iconCircle, { backgroundColor: `${tintColor}20` }]}>
             <IconSymbol name="chart.bar.fill" size={22} color={tintColor} />
           </View>
@@ -44,7 +44,7 @@ export function HomeActionBar({
 
         <View style={styles.divider} />
 
-        <Pressable onPress={() => router.push('/modal')} style={styles.btn}>
+        <Pressable onPress={() => router.navigate('/')} style={styles.btn}>
           <View style={[styles.iconCircle, { backgroundColor: `${accentColor}20` }]}>
             <IconSymbol name="book.fill" size={22} color={accentColor} />
           </View>

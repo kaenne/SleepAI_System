@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { api } from '@/services/api';
+import { api, type StressDataDto, type StressAverageDto, type StressLevel as StressLevelDto } from '@/services/api';
 
 export type StressLevel = 'LOW' | 'MEDIUM' | 'HIGH' | 'UNKNOWN';
 
@@ -17,6 +16,28 @@ export type StressStats = {
   period: string;
 };
 
+function normaliseLevel(level: StressLevelDto | string | undefined): StressLevel {
+  if (level === 'LOW' || level === 'MEDIUM' || level === 'HIGH') return level;
+  return 'UNKNOWN';
+}
+
+function adaptStress(dto: StressDataDto): StressData {
+  return {
+    id: dto.id,
+    hrvScore: dto.hrvScore,
+    stressLevel: normaliseLevel(dto.stressLevel),
+    timestamp: dto.timestamp,
+  };
+}
+
+function adaptStats(dto: StressAverageDto): StressStats {
+  return {
+    averageHrv: dto.averageHrv,
+    stressLevel: normaliseLevel(dto.stressLevel),
+    period: dto.period,
+  };
+}
+
 export function useStressMonitor() {
   const [latestStress, setLatestStress] = useState<StressData | null>(null);
   const [history, setHistory] = useState<StressData[]>([]);
@@ -26,42 +47,26 @@ export function useStressMonitor() {
 
   const fetchLatestStress = useCallback(async () => {
     if (!api.getBaseUrl()) return;
-    
     try {
-      const response = await fetch(`${api.getBaseUrl()}/api/stress/latest`, {
-        headers: {
-          'Authorization': `Bearer ${await getToken()}`,
-        },
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        if (data.hrvScore !== undefined) {
-          setLatestStress(data);
-        }
+      const data = await api.getLatestStress();
+      // Backend returns { message: ... } when no data exists; only update on real readings.
+      if ('hrvScore' in data && data.hrvScore !== undefined) {
+        setLatestStress(adaptStress(data));
       }
     } catch (e) {
-      console.error('Failed to fetch stress data:', e);
+      console.warn('Failed to fetch latest stress:', e);
     }
   }, []);
 
   const fetchHistory = useCallback(async () => {
     if (!api.getBaseUrl()) return;
-    
     setIsLoading(true);
     try {
-      const response = await fetch(`${api.getBaseUrl()}/api/stress/history`, {
-        headers: {
-          'Authorization': `Bearer ${await getToken()}`,
-        },
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setHistory(data);
-      }
-    } catch {
-      setError('Failed to fetch stress history');
+      const data = await api.getStressHistory();
+      setHistory(data.map(adaptStress));
+    } catch (e: unknown) {
+      const err = e as { message?: string };
+      setError(err?.message ?? 'Failed to fetch stress history');
     } finally {
       setIsLoading(false);
     }
@@ -69,26 +74,17 @@ export function useStressMonitor() {
 
   const fetchStats = useCallback(async (days: number = 7) => {
     if (!api.getBaseUrl()) return;
-    
     try {
-      const response = await fetch(`${api.getBaseUrl()}/api/stress/average?days=${days}`, {
-        headers: {
-          'Authorization': `Bearer ${await getToken()}`,
-        },
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setStats(data);
-      }
+      const data = await api.getStressAverage(days);
+      setStats(adaptStats(data));
     } catch (e) {
-      console.error('Failed to fetch stress stats:', e);
+      console.warn('Failed to fetch stress stats:', e);
     }
   }, []);
 
-  const recordStress = useCallback(async (hrvScore: number) => {
+  const recordStress = useCallback(async (hrvScore: number): Promise<StressData> => {
     if (!api.getBaseUrl()) {
-      // Mock data for offline mode
+      // Offline mode: derive level locally so the UI still updates.
       const mockData: StressData = {
         id: Date.now(),
         hrvScore,
@@ -96,33 +92,21 @@ export function useStressMonitor() {
         timestamp: new Date().toISOString(),
       };
       setLatestStress(mockData);
-      setHistory(prev => [mockData, ...prev]);
+      setHistory((prev) => [mockData, ...prev]);
       return mockData;
     }
-    
+
     setIsLoading(true);
     setError(null);
-    
     try {
-      const response = await fetch(`${api.getBaseUrl()}/api/stress`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${await getToken()}`,
-        },
-        body: JSON.stringify({ hrvScore }),
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setLatestStress(data);
-        setHistory(prev => [data, ...prev]);
-        return data;
-      } else {
-        throw new Error('Failed to record stress');
-      }
-    } catch (e: any) {
-      setError(e.message);
+      const dto = await api.saveStress(hrvScore);
+      const adapted = adaptStress(dto);
+      setLatestStress(adapted);
+      setHistory((prev) => [adapted, ...prev]);
+      return adapted;
+    } catch (e: unknown) {
+      const err = e as { message?: string };
+      setError(err?.message ?? 'Failed to record stress');
       throw e;
     } finally {
       setIsLoading(false);
@@ -131,20 +115,16 @@ export function useStressMonitor() {
 
   // Simulate HRV measurement (in real app, this would use device sensors)
   const measureHrv = useCallback(async (): Promise<number> => {
-    // Simulate measurement delay
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // Generate realistic HRV value (30-90 range)
+    await new Promise((resolve) => setTimeout(resolve, 2000));
     const baseHrv = 55;
     const variation = Math.random() * 30 - 15; // ±15
     return Math.round(baseHrv + variation);
   }, []);
 
   useEffect(() => {
-    fetchLatestStress();
-    fetchStats();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    void fetchLatestStress();
+    void fetchStats();
+  }, [fetchLatestStress, fetchStats]);
 
   return {
     latestStress,
@@ -154,17 +134,12 @@ export function useStressMonitor() {
     error,
     recordStress,
     measureHrv,
-    refresh: () => {
-      fetchLatestStress();
-      fetchHistory();
-      fetchStats();
-    },
+    refresh: useCallback(() => {
+      void fetchLatestStress();
+      void fetchHistory();
+      void fetchStats();
+    }, [fetchLatestStress, fetchHistory, fetchStats]),
   };
-}
-
-// Helper to get token
-async function getToken(): Promise<string> {
-  return (await AsyncStorage.getItem('sleepMind.authToken')) || '';
 }
 
 // Helper function to get stress color
@@ -181,39 +156,30 @@ export function getStressColor(level: StressLevel): string {
   }
 }
 
-// Helper function to get stress emoji
+// Helper function to get stress emoji (removed as per user request to drop emojis)
 export function getStressEmoji(level: StressLevel): string {
-  switch (level) {
-    case 'LOW':
-      return '😌';
-    case 'MEDIUM':
-      return '😐';
-    case 'HIGH':
-      return '😰';
-    default:
-      return '❓';
-  }
+  return '';
 }
 
 // Helper to interpret HRV
 export function interpretHrv(hrv: number): {
   level: StressLevel;
-  description: string;
+  descriptionKey: string;
 } {
   if (hrv >= 60) {
     return {
       level: 'LOW',
-      description: 'Excellent! Your body is relaxed and recovering well.',
+      descriptionKey: 'stress.desc_low',
     };
   } else if (hrv >= 40) {
     return {
       level: 'MEDIUM',
-      description: 'Moderate stress detected. Consider taking a break.',
+      descriptionKey: 'stress.desc_medium',
     };
   } else {
     return {
       level: 'HIGH',
-      description: 'High stress levels. Try breathing exercises or meditation.',
+      descriptionKey: 'stress.desc_high',
     };
   }
 }

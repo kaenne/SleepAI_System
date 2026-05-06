@@ -51,8 +51,6 @@ public class SecurityConfig {
                 .authorizeHttpRequests(authorize -> authorize
                         // Разрешаем вход и регистрацию
                         .requestMatchers("/api/auth/**").permitAll()
-                        // Разрешаем AI эндпоинты (predict + chat)
-                        .requestMatchers("/api/ai/**").permitAll()
                         // Разрешаем health check
                         .requestMatchers("/health", "/actuator/health").permitAll()
                         // Разрешаем Swagger

@@ -20,8 +20,9 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { scheduleWakeUpAlarm, cancelWakeUpAlarm } from '@/hooks/use-notifications';
 import { api } from '@/services/api';
 import { useTranslation } from '@/contexts/i18n-context';
+import { StorageKeys } from '@/constants/storage';
 
-const SLEEP_SESSION_KEY = 'sleepMind.activeSession';
+const SLEEP_SESSION_KEY = StorageKeys.ACTIVE_SESSION;
 
 type SleepSession = {
   startTime: string;

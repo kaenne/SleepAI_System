@@ -3,11 +3,12 @@ import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import * as React from 'react';
 import { useTranslation } from '@/contexts/i18n-context';
+import { StorageKeys, NotificationChannel } from '@/constants/storage';
 
-const NOTIF_ENABLED_KEY = 'sleepai_notifications_enabled';
-const NOTIF_TIME_KEY = 'sleepai_notification_time'; // "HH:MM"
-const WAKE_UP_NOTIF_ID_KEY = 'sleepai_wakeup_notif_id';
-const SLEEP_REMINDER_ID_KEY = 'sleepai_reminder_notif_id';
+const NOTIF_ENABLED_KEY = StorageKeys.NOTIF_ENABLED;
+const NOTIF_TIME_KEY = StorageKeys.NOTIF_TIME; // "HH:MM"
+const WAKE_UP_NOTIF_ID_KEY = StorageKeys.WAKE_UP_NOTIF_ID;
+const SLEEP_REMINDER_ID_KEY = StorageKeys.SLEEP_REMINDER_ID;
 
 export type NotificationTime = { hour: number; minute: number };
 
@@ -25,7 +26,7 @@ Notifications.setNotificationHandler({
 // Create Android channel for alarms (must be HIGH importance)
 async function ensureAlarmChannel(): Promise<void> {
   if (Platform.OS !== 'android') return;
-  await Notifications.setNotificationChannelAsync('sleepai_alarm', {
+  await Notifications.setNotificationChannelAsync(NotificationChannel.ALARM, {
     name: '⏰ SleepAI Alarm',
     importance: Notifications.AndroidImportance.MAX,
     sound: 'default',
@@ -69,7 +70,7 @@ async function scheduleReminder(hour: number, minute: number, title: string, bod
       title,
       body,
       sound: 'default',
-      ...(Platform.OS === 'android' && { channelId: 'sleepai_alarm' }),
+      ...(Platform.OS === 'android' && { channelId: NotificationChannel.ALARM }),
     },
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.DAILY,
@@ -105,7 +106,7 @@ export async function scheduleWakeUpAlarm(hour: number, minute: number, title: s
       body,
       sound: 'default',
       priority: 'max',
-      ...(Platform.OS === 'android' && { channelId: 'sleepai_alarm' }),
+      ...(Platform.OS === 'android' && { channelId: NotificationChannel.ALARM }),
     },
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.DATE,
@@ -196,7 +197,7 @@ export function useNotifications() {
         body: t('notifications.testBody'),
         sound: 'default',
         priority: 'max',
-        ...(Platform.OS === 'android' && { channelId: 'sleepai_alarm' }),
+        ...(Platform.OS === 'android' && { channelId: NotificationChannel.ALARM }),
       },
       trigger: null, // send immediately
     });

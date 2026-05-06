@@ -5,11 +5,9 @@ import { StyleSheet, View } from 'react-native';
 import { Badge } from '@/components/ui/badge';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ThemedText } from '@/components/themed-text';
-import { Spacing } from '@/constants/theme';
+import { Colors, Spacing } from '@/constants/theme';
 import { useTranslation } from '@/contexts/i18n-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { useThemeColor } from '@/hooks/use-theme-color';
-import { Colors } from '@/constants/theme';
 
 type Props = {
   todaySleep: number;
@@ -22,6 +20,32 @@ export function QuickStatsRow({ todaySleep, sleepQuality, stressLevel, currentSt
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
   const { t } = useTranslation();
+
+  // Card gradient + accent must reflect the actual stress level — a green card
+  // for "Низкий" was previously rendered red, which read as a danger signal.
+  const stressTier: 'low' | 'medium' | 'high' =
+    stressLevel <= 4 ? 'low' : stressLevel <= 6 ? 'medium' : 'high';
+
+  const stressGradient: readonly [string, string] = (() => {
+    if (colorScheme === 'dark') {
+      if (stressTier === 'low') return ['#064e3b', '#065f46'] as const;       // green
+      if (stressTier === 'medium') return ['#7c2d12', '#9a3412'] as const;   // amber
+      return ['#450a0a', '#7f1d1d'] as const;                                  // red
+    }
+    if (stressTier === 'low') return ['#d1fae5', '#a7f3d0'] as const;
+    if (stressTier === 'medium') return ['#ffedd5', '#fed7aa'] as const;
+    return ['#ffe4e6', '#fecdd3'] as const;
+  })();
+
+  const stressValueColor =
+    stressTier === 'low' ? colors.success :
+    stressTier === 'medium' ? colors.warning :
+    colors.danger;
+
+  const stressIconColor =
+    stressTier === 'low' ? colors.success :
+    stressTier === 'medium' ? colors.warning :
+    colors.danger;
 
   return (
     <View style={styles.statsRow}>
@@ -56,22 +80,19 @@ export function QuickStatsRow({ todaySleep, sleepQuality, stressLevel, currentSt
       </LinearGradient>
 
       <LinearGradient
-        colors={[
-          colorScheme === 'dark' ? '#450a0a' : '#ffe4e6',
-          colorScheme === 'dark' ? '#7f1d1d' : '#fecdd3',
-        ]}
+        colors={stressGradient}
         style={styles.gradientCard}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
       >
         <View style={styles.cardIconWrapperAbsolute}>
-          <IconSymbol name="heart.fill" size={40} color={`${colors.danger}20`} />
+          <IconSymbol name="heart.fill" size={40} color={`${stressIconColor}20`} />
         </View>
         <ThemedText style={styles.quickStatLabel}>{t('home.stressLabel')}</ThemedText>
-        <ThemedText style={[styles.quickStatValue, { color: colors.danger }]}>
-          {stressLevel <= 4
+        <ThemedText style={[styles.quickStatValue, { color: stressValueColor }]}>
+          {stressTier === 'low'
             ? t('home.stress_low')
-            : stressLevel <= 6
+            : stressTier === 'medium'
             ? t('home.stress_medium')
             : t('home.stress_high')}
         </ThemedText>

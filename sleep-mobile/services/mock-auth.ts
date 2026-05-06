@@ -5,10 +5,11 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ApiError, AuthResponse, AuthTokens, User } from './auth';
+import { StorageKeys } from '@/constants/storage';
 
-const AUTH_TOKEN_KEY = 'sleepMind.authToken';
-const REFRESH_TOKEN_KEY = 'sleepMind.refreshToken';
-const USER_KEY = 'sleepMind.user';
+const AUTH_TOKEN_KEY = StorageKeys.AUTH_TOKEN;
+const REFRESH_TOKEN_KEY = StorageKeys.REFRESH_TOKEN;
+const USER_KEY = StorageKeys.USER;
 
 // Mock users for development
 const MOCK_USERS: Record<string, { password: string; user: User }> = {

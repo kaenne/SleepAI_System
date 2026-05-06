@@ -42,6 +42,7 @@ export default function TabLayout() {
         tabBarActiveTintColor: colors.tint,
         tabBarInactiveTintColor: colors.icon,
         headerShown: false,
+        tabBarShowLabel: false,
         tabBarButton: HapticTab,
         tabBarBackground: () =>
           Platform.OS !== 'android' ? (
@@ -59,7 +60,7 @@ export default function TabLayout() {
           borderTopColor: 'transparent',
           height: tabBarHeight,
           paddingTop: 10,
-          paddingBottom: insets.bottom + 6,
+          paddingBottom: insets.bottom > 0 ? insets.bottom : 10,
           // subtle top border via shadow
           shadowColor: colorScheme === 'dark' ? '#000' : '#6366F1',
           shadowOffset: { width: 0, height: -2 },
@@ -67,14 +68,11 @@ export default function TabLayout() {
           shadowRadius: 12,
           elevation: 16,
         },
-        tabBarLabelStyle: {
-          fontSize: 10,
-          fontWeight: '600',
-          letterSpacing: 0.3,
-          marginTop: 2,
-        },
         tabBarIconStyle: {
-          marginBottom: -2,
+          justifyContent: 'center',
+          alignItems: 'center',
+          alignSelf: 'center',
+          marginTop: Platform.OS === 'ios' ? (insets.bottom > 0 ? 10 : 0) : 0,
         },
       }}>
       <Tabs.Screen
@@ -82,7 +80,7 @@ export default function TabLayout() {
         options={{
           title: t('tabs.diary'),
           tabBarIcon: ({ color, focused }) => (
-            <IconSymbol size={focused ? 27 : 24} name="house.fill" color={color} />
+            <IconSymbol size={focused ? 32 : 28} name="house.fill" color={color} />
           ),
         }}
       />
@@ -91,7 +89,7 @@ export default function TabLayout() {
         options={{
           title: t('tabs.stats'),
           tabBarIcon: ({ color, focused }) => (
-            <IconSymbol size={focused ? 27 : 24} name="chart.bar.fill" color={color} />
+            <IconSymbol size={focused ? 32 : 28} name="chart.bar.fill" color={color} />
           ),
         }}
       />
@@ -100,7 +98,7 @@ export default function TabLayout() {
         options={{
           title: t('tabs.aiTrainer'),
           tabBarIcon: ({ color, focused }) => (
-            <IconSymbol size={focused ? 27 : 24} name="bubble.left.and.bubble.right.fill" color={color} />
+            <IconSymbol size={focused ? 32 : 28} name="bubble.left.and.bubble.right.fill" color={color} />
           ),
         }}
       />
@@ -109,7 +107,7 @@ export default function TabLayout() {
         options={{
           title: t('tabs.settings'),
           tabBarIcon: ({ color, focused }) => (
-            <IconSymbol size={focused ? 27 : 24} name="gearshape.fill" color={color} />
+            <IconSymbol size={focused ? 32 : 28} name="gearshape.fill" color={color} />
           ),
         }}
       />
@@ -118,7 +116,7 @@ export default function TabLayout() {
         options={{
           title: t('tabs.profile'),
           tabBarIcon: ({ color, focused }) => (
-            <IconSymbol size={focused ? 27 : 24} name="person.crop.circle.fill" color={color} />
+            <IconSymbol size={focused ? 32 : 28} name="person.crop.circle.fill" color={color} />
           ),
         }}
       />

@@ -3,6 +3,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as React from 'react';
 import {
   Modal,
+  Platform,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -10,6 +11,7 @@ import {
   TextInput,
   View,
   useWindowDimensions,
+  KeyboardAvoidingView,
 } from 'react-native';
 import Animated, {
   FadeInDown,
@@ -25,15 +27,16 @@ import Animated, {
 import { ThemedText } from '@/components/themed-text';
 import { Card } from '@/components/ui/card';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { StorageKeys } from '@/constants/storage';
 import { Colors, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
-import { useTranslation } from '@/contexts/i18n-context';
+import { LANG_OPTIONS, useTranslation, type Language } from '@/contexts/i18n-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useSleepJournal } from '@/hooks/use-sleep-journal';
 import { useUserProfile } from '@/hooks/use-user-profile';
 import { api } from '@/services/api';
 
-const DISPLAY_NAME_KEY = 'sleepai_display_name';
+const DISPLAY_NAME_KEY = StorageKeys.DISPLAY_NAME;
 
 // Animated progress bar for sleep goal
 function GoalProgressBar({
@@ -155,7 +158,7 @@ export default function ProfileScreen() {
   const { user, isAuthenticated } = useAuth();
   const { entries, stats } = useSleepJournal();
   const { profile, saveProfile } = useUserProfile();
-  const { t } = useTranslation();
+  const { t, language, setLanguage } = useTranslation();
 
   // Achievement box: 3 per row, account for padding + gaps
   const achievementBoxSize = Math.floor((screenWidth - Spacing.md * 2 - Spacing.lg * 2 - 12 * 2) / 3);
@@ -348,7 +351,7 @@ export default function ProfileScreen() {
               <StatBox
                 icon="star.fill" iconColor={colors.success}
                 label={t('profile.bestNight')}
-                value={bestSleepNight > 0 ? `${bestSleepNight}h` : '—'}
+                value={bestSleepNight > 0 ? `${bestSleepNight}h` : t('common.noData')}
                 colors={colors}
               />
             </View>
@@ -365,7 +368,7 @@ export default function ProfileScreen() {
                   {t('profile.avgSleep')}
                 </ThemedText>
                 <ThemedText style={[styles.summaryValue, { color: colors.text }]} numberOfLines={1}>
-                  {stats.avgSleepHours ? `${stats.avgSleepHours}h` : '—'}
+                  {stats.avgSleepHours ? `${stats.avgSleepHours}h` : t('common.noData')}
                 </ThemedText>
               </View>
               <View style={[styles.summaryDivider, { backgroundColor: colors.cardBorder }]} />
@@ -423,14 +426,14 @@ export default function ProfileScreen() {
               <View style={styles.aiProfileItem}>
                 <ThemedText style={[styles.aiProfileLabel, { color: colors.textSecondary }]}>{t('profile.ageLabel')}</ThemedText>
                 <ThemedText style={[styles.aiProfileValue, { color: colors.text }]} numberOfLines={1}>
-                  {profile.age !== null ? `${profile.age} ${t('profile.years')}` : '—'}
+                  {profile.age !== null ? `${profile.age} ${t('profile.years')}` : t('common.noData')}
                 </ThemedText>
               </View>
               <View style={[styles.summaryDivider, { backgroundColor: colors.cardBorder }]} />
               <View style={styles.aiProfileItem}>
                 <ThemedText style={[styles.aiProfileLabel, { color: colors.textSecondary }]}>{t('profile.genderLabel')}</ThemedText>
                 <ThemedText style={[styles.aiProfileValue, { color: colors.text }]} numberOfLines={1}>
-                  {profile.gender === 1 ? t('profile.genderMale') : profile.gender === 0 ? t('profile.genderFemale') : '—'}
+                  {profile.gender === 1 ? t('profile.genderMale') : profile.gender === 0 ? t('profile.genderFemale') : t('common.noData')}
                 </ThemedText>
               </View>
               <View style={[styles.summaryDivider, { backgroundColor: colors.cardBorder }]} />
@@ -439,9 +442,48 @@ export default function ProfileScreen() {
                 <ThemedText style={[styles.aiProfileValue, { color: colors.text }]} numberOfLines={1}>
                   {profile.bmiCategory === 0 ? t('profile.bmiNormal')
                     : profile.bmiCategory === 1 ? t('profile.bmiOverweight')
-                    : profile.bmiCategory === 2 ? t('profile.bmiObese') : '—'}
+                    : profile.bmiCategory === 2 ? t('profile.bmiObese') : t('common.noData')}
                 </ThemedText>
               </View>
+            </View>
+          </Card>
+        </Animated.View>
+
+        {/* Language selector — placed under AI Data per design spec */}
+        <Animated.View entering={FadeInUp.delay(170).duration(400)}>
+          <Card variant="default">
+            <ThemedText type="subtitle" style={[styles.cardTitle, styles.centeredText]}>
+              {t('common.languageTitle')}
+            </ThemedText>
+            <View style={styles.languageSelectorRow}>
+              {LANG_OPTIONS.map((opt) => {
+                const active = language === opt.value;
+                return (
+                  <Pressable
+                    key={opt.value}
+                    onPress={() => setLanguage(opt.value as Language)}
+                    style={[
+                      styles.languagePill,
+                      {
+                        backgroundColor: active ? colors.tint + '22' : colors.inputBackground,
+                        borderColor: active ? colors.tint : colors.inputBorder,
+                      },
+                    ]}
+                  >
+                    <ThemedText
+                      style={[
+                        styles.languagePillText,
+                        {
+                          color: active ? colors.tint : colors.muted,
+                          fontWeight: active ? '700' : '500',
+                        },
+                      ]}
+                    >
+                      {opt.value.toUpperCase()}
+                    </ThemedText>
+                  </Pressable>
+                );
+              })}
             </View>
           </Card>
         </Animated.View>
@@ -453,7 +495,10 @@ export default function ProfileScreen() {
           animationType="fade"
           onRequestClose={() => setEditingAiProfile(false)}
         >
-          <View style={styles.modalOverlay}>
+          <KeyboardAvoidingView 
+            style={styles.modalOverlay}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          >
             <View style={[styles.modalCard, { backgroundColor: colors.cardBackground }]}>
               <ThemedText type="subtitle" style={{ marginBottom: 4 }}>{t('profile.editAiTitle')}</ThemedText>
               <ThemedText style={{ color: colors.textSecondary, fontSize: 13, marginBottom: Spacing.lg }}>
@@ -464,7 +509,7 @@ export default function ProfileScreen() {
                 <ThemedText style={[styles.aiEditLabel, { color: colors.textSecondary }]}>{t('profile.editAgeLabel')}</ThemedText>
                 <View style={[styles.aiEditInput, { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder }]}>
                   <TextInput
-                    style={{ color: colors.text, fontSize: 16, flex: 1 }}
+                    style={{ color: colors.text, fontSize: 16, height: 48, paddingHorizontal: 12 }}
                     value={tempAge}
                     onChangeText={v => setTempAge(v.replace(/[^0-9]/g, ''))}
                     placeholder={t('profile.editAgePlaceholder')}
@@ -495,14 +540,14 @@ export default function ProfileScreen() {
 
               <View style={styles.aiEditGroup}>
                 <ThemedText style={[styles.aiEditLabel, { color: colors.textSecondary }]}>{t('profile.editBmiLabel')}</ThemedText>
-                <View style={{ flexDirection: 'row', gap: Spacing.xs, flexWrap: 'wrap' }}>
+                <View style={{ flexDirection: 'row', gap: Spacing.sm, flexWrap: 'nowrap' }}>
                   {([t('profile.bmiNormal'), t('profile.bmiOverweight'), t('profile.bmiObese')] as const).map((label, i) => (
                     <Pressable key={i} onPress={() => setTempBmi(tempBmi === i ? null : i as 0 | 1 | 2)}
                       style={[styles.chipBtn, {
                         backgroundColor: tempBmi === i ? colors.tint + '20' : colors.inputBackground,
                         borderColor: tempBmi === i ? colors.tint : colors.inputBorder,
                       }]}>
-                      <ThemedText style={{ color: tempBmi === i ? colors.tint : colors.muted, fontWeight: tempBmi === i ? '700' : '400', fontSize: 13 }}>
+                      <ThemedText style={{ color: tempBmi === i ? colors.tint : colors.muted, fontWeight: tempBmi === i ? '700' : '500', fontSize: 14 }}>
                         {label}
                       </ThemedText>
                     </Pressable>
@@ -519,7 +564,7 @@ export default function ProfileScreen() {
                 </Pressable>
               </View>
             </View>
-          </View>
+          </KeyboardAvoidingView>
         </Modal>
 
         {/* Achievements */}
@@ -579,6 +624,21 @@ const styles = StyleSheet.create({
   scrollView: { flex: 1 },
   scrollContent: { padding: Spacing.md, gap: Spacing.md, paddingBottom: 32 },
   cardTitle: { marginBottom: 14 },
+  centeredText: { textAlign: 'center' },
+  languageSelectorRow: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+    justifyContent: 'center',
+  },
+  languagePill: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  languagePillText: { fontSize: 14, letterSpacing: 1 },
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   statBoxPressable: { flex: 1, minWidth: '44%' },
   statBox: { borderRadius: 14, padding: 14, alignItems: 'center', gap: 4 },
@@ -613,8 +673,8 @@ const styles = StyleSheet.create({
   modalCard: { width: '100%', borderRadius: 20, padding: Spacing.lg, gap: 4 },
   aiEditGroup: { marginTop: Spacing.sm, gap: 8 },
   aiEditLabel: { fontSize: 12, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.6 },
-  aiEditInput: { borderWidth: 1.5, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10 },
-  chipBtn: { alignItems: 'center', justifyContent: 'center', paddingVertical: 10, borderRadius: 10, borderWidth: 1.5 },
+  aiEditInput: { borderWidth: 1.5, borderRadius: 10, overflow: 'hidden' },
+  chipBtn: { alignItems: 'center', justifyContent: 'center', paddingVertical: 10, paddingHorizontal: 4, borderRadius: 10, borderWidth: 1.5, flex: 1 },
   modalActions: { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.md },
   modalBtn: { flex: 1, paddingVertical: 13, borderRadius: 12, alignItems: 'center' },
 });

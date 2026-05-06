@@ -1,20 +1,14 @@
 import { getStressEmoji, interpretHrv } from '@/hooks/use-stress-monitor';
 
+// Emojis were intentionally dropped from the UI — getStressEmoji now returns ''
+// for every level. Keeping a single test ensures the function still exists and
+// returns a string, but no specific emoji values are asserted.
 describe('getStressEmoji', () => {
-  it('returns relaxed emoji for LOW', () => {
-    expect(getStressEmoji('LOW')).toBe('😌');
-  });
-
-  it('returns neutral emoji for MEDIUM', () => {
-    expect(getStressEmoji('MEDIUM')).toBe('😐');
-  });
-
-  it('returns anxious emoji for HIGH', () => {
-    expect(getStressEmoji('HIGH')).toBe('😰');
-  });
-
-  it('returns question mark for UNKNOWN', () => {
-    expect(getStressEmoji('UNKNOWN')).toBe('❓');
+  it('returns a string for any level', () => {
+    expect(typeof getStressEmoji('LOW')).toBe('string');
+    expect(typeof getStressEmoji('MEDIUM')).toBe('string');
+    expect(typeof getStressEmoji('HIGH')).toBe('string');
+    expect(typeof getStressEmoji('UNKNOWN')).toBe('string');
   });
 });
 
@@ -22,7 +16,7 @@ describe('interpretHrv', () => {
   it('returns LOW for hrv >= 60', () => {
     const result = interpretHrv(60);
     expect(result.level).toBe('LOW');
-    expect(result.description).toBeTruthy();
+    expect(result.descriptionKey).toBeTruthy();
   });
 
   it('returns LOW for high hrv values', () => {
@@ -39,9 +33,9 @@ describe('interpretHrv', () => {
     expect(interpretHrv(10).level).toBe('HIGH');
   });
 
-  it('returns non-empty description for all levels', () => {
-    expect(interpretHrv(80).description.length).toBeGreaterThan(0);
-    expect(interpretHrv(50).description.length).toBeGreaterThan(0);
-    expect(interpretHrv(20).description.length).toBeGreaterThan(0);
+  it('returns translation key for all levels', () => {
+    expect(interpretHrv(80).descriptionKey).toMatch(/^stress\./);
+    expect(interpretHrv(50).descriptionKey).toMatch(/^stress\./);
+    expect(interpretHrv(20).descriptionKey).toMatch(/^stress\./);
   });
 });

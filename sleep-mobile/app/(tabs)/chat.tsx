@@ -109,8 +109,76 @@ function SendButton({
   );
 }
 
+function FormattedMessageText({ text, color, isUser }: { text: string; color: string; isUser: boolean }) {
+  const blocks = text.split('\n');
+
+  return (
+    <View style={{ flexShrink: 1, alignSelf: 'stretch' }}>
+      {blocks.map((block, index) => {
+        // match bulleted or numbered list items
+        const isBullet = block.match(/^[*|-]\s+(.*)/);
+        const isNumber = block.match(/^(\d+\.)\s+(.*)/);
+
+        let content = block;
+        let prefix = null;
+        let isList = false;
+
+        if (isBullet) {
+          prefix = '•';
+          content = isBullet[1];
+          isList = true;
+        } else if (isNumber) {
+          prefix = isNumber[1];
+          content = isNumber[2];
+          isList = true;
+        }
+
+        const renderInline = (str: string) => {
+          const parts = str.split(/(\*\*.*?\*\*)/g);
+          return parts.map((part, i) => {
+            if (part.startsWith('**') && part.endsWith('**')) {
+              return (
+                <ThemedText key={i} style={{ color, fontSize: 16, lineHeight: 24, fontWeight: '700' }}>
+                  {part.slice(2, -2)}
+                </ThemedText>
+              );
+            }
+            return <ThemedText key={i} style={{ color, fontSize: 16, lineHeight: 24 }}>{part}</ThemedText>;
+          });
+        };
+
+        if (block.trim() === '' && index === blocks.length - 1) return null;
+
+        if (isList && !isUser) {
+          return (
+            <View key={index} style={{ flexDirection: 'row', marginBottom: 4, marginLeft: 4, alignItems: 'flex-start' }}>
+              <ThemedText style={{ color, fontSize: 16, lineHeight: 24, width: prefix === '•' ? 14 : 22, fontWeight: '700' }}>
+                {prefix}
+              </ThemedText>
+              <ThemedText style={{ flex: 1, color, fontSize: 16, lineHeight: 24 }}>
+                {renderInline(content)}
+              </ThemedText>
+            </View>
+          );
+        }
+
+        if (block.trim() === '') {
+          return <View key={index} style={{ height: 8 }} />;
+        }
+
+        return (
+          <ThemedText key={index} style={{ color, fontSize: 16, lineHeight: 24, marginBottom: 4 }}>
+            {renderInline(block)}
+          </ThemedText>
+        );
+      })}
+    </View>
+  );
+}
+
 export default function ChatScreen() {
   const colorScheme = useColorScheme() ?? 'light';
+  const isDark = colorScheme === 'dark';
   const colors = Colors[colorScheme];
   const scrollRef = React.useRef<ScrollView>(null);
   const insets = useSafeAreaInsets();
@@ -243,11 +311,11 @@ export default function ChatScreen() {
           <Animated.View entering={FadeInDown.duration(400)} style={styles.headerContent}>
             <View style={styles.headerLeft}>
               <View style={styles.avatarContainer}>
-                <ThemedText style={styles.avatarEmoji}>🧠</ThemedText>
+                <IconSymbol name="bolt.horizontal.circle.fill" size={32} color="#FFFFFF" />
               </View>
               <View>
                 <ThemedText style={styles.headerTitle}>{t('chat.title')}</ThemedText>
-                <ThemedText style={styles.headerSubtitle}>{t('chat.subtitle')}</ThemedText>
+                <ThemedText style={[styles.headerSubtitle, { color: 'rgba(255,255,255,0.8)' }]}>{t('chat.subtitle')}</ThemedText>
               </View>
             </View>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -278,6 +346,13 @@ export default function ChatScreen() {
         >
           {messages.map((message) => {
             const isNew = newMessageIds.current.has(message.id);
+            // Remove the hardcoded English prefix if it exists in the message content
+            let displayMessage = message.text;
+            if (!message.isUser && displayMessage.startsWith('*Based on your data:')) {
+               displayMessage = displayMessage.replace(/\*Based on your data: [^*]+\*\n\n/, '');
+               displayMessage = displayMessage.replace(/^\n/, '');
+            }
+
             return (
               <Animated.View
                 key={message.id}
@@ -286,8 +361,8 @@ export default function ChatScreen() {
                   styles.messageBubble,
                   message.isUser ? styles.userBubble : styles.aiBubble,
                   {
-                    backgroundColor: message.isUser ? 'transparent' : colors.cardBackground,
-                    borderColor: message.isUser ? 'transparent' : colors.cardBorder,
+                    backgroundColor: message.isUser ? 'transparent' : (isDark ? '#2C2C3E' : '#F5F5F5'),
+                    borderColor: 'transparent',
                     overflow: 'hidden',
                   },
                 ]}
@@ -300,14 +375,11 @@ export default function ChatScreen() {
                     style={StyleSheet.absoluteFill}
                   />
                 )}
-                <ThemedText
-                  style={[
-                    styles.messageText,
-                    { color: message.isUser ? '#FFFFFF' : colors.text },
-                  ]}
-                >
-                  {message.isUser ? message.text : `🤖 ${message.text}`}
-                </ThemedText>
+                <FormattedMessageText
+                  text={displayMessage}
+                  color={message.isUser ? '#FFFFFF' : colors.text}
+                  isUser={message.isUser}
+                />
                 <ThemedText
                   style={[
                     styles.messageTime,
@@ -324,8 +396,8 @@ export default function ChatScreen() {
             <Animated.View
               entering={FadeIn.duration(200)}
               style={[styles.typingIndicator, {
-                backgroundColor: colors.cardBackground,
-                borderColor: colors.cardBorder,
+                backgroundColor: isDark ? '#2C2C3E' : '#F5F5F5',
+                borderColor: 'transparent',
               }]}
             >
               <View style={styles.typingDots}>
@@ -351,12 +423,12 @@ export default function ChatScreen() {
                   key={`sug-${i}`}
                   onPress={() => sendMessage(s)}
                   style={[styles.quickReply, {
-                    backgroundColor: `${colors.tint}15`,
-                    borderColor: colors.tint,
+                    backgroundColor: isDark ? '#2C2C3E' : '#F5F5F5',
+                    borderColor: 'transparent',
                   }]}
                 >
-                  <ThemedText style={[styles.quickReplyText, { color: colors.tint }]}>
-                    ✨ {s}
+                  <ThemedText style={[styles.quickReplyText, { color: colors.text }]}>
+                    {s}
                   </ThemedText>
                 </Pressable>
               ))
@@ -365,8 +437,8 @@ export default function ChatScreen() {
                   key={key}
                   onPress={() => sendMessage(t(`chat.${key}_text` as any))}
                   style={[styles.quickReply, {
-                    backgroundColor: colors.cardBackground,
-                    borderColor: colors.cardBorder,
+                    backgroundColor: isDark ? '#2C2C3E' : '#F5F5F5',
+                    borderColor: 'transparent',
                   }]}
                 >
                   <ThemedText style={styles.quickReplyText}>
@@ -382,8 +454,8 @@ export default function ChatScreen() {
           style={[
             styles.inputContainer,
             {
-              backgroundColor: colors.cardBackground,
-              borderColor: colors.cardBorder,
+              backgroundColor: isDark ? '#1E1E2D' : '#FFFFFF',
+              borderColor: isDark ? '#2C2C3E' : '#E5E7EB',
               marginBottom: Math.max(insets.bottom, Spacing.md),
             },
           ]}
@@ -468,16 +540,16 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   messageBubble: {
-    maxWidth: '82%',
+    maxWidth: '86%',
     padding: 14,
-    borderRadius: 22,
-    marginBottom: 10,
+    borderRadius: 20,
+    marginBottom: 12,
     borderWidth: 1,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.07,
-    shadowRadius: 6,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 1,
   },
   userBubble: {
     alignSelf: 'flex-end',
@@ -488,8 +560,8 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 4,
   },
   messageText: {
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: 16,
+    lineHeight: 24,
   },
   messageTime: {
     fontSize: 11,
@@ -498,8 +570,8 @@ const styles = StyleSheet.create({
   },
   typingIndicator: {
     alignSelf: 'flex-start',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     borderRadius: 20,
     borderBottomLeftRadius: 6,
     borderWidth: 1,
@@ -521,7 +593,10 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   quickRepliesContent: {
-    paddingHorizontal: Spacing.md,
+    paddingLeft: Spacing.md,
+    // Extra trailing space so the last chip never appears clipped at the edge.
+    // Cloudflare-tunneled bundles render slowly — visual hints matter for first impression.
+    paddingRight: Spacing.md * 2,
     gap: 8,
     alignItems: 'center',
   },
@@ -538,18 +613,18 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    padding: 12,
+    padding: 10,
     marginHorizontal: Spacing.md,
-    borderRadius: 28,
+    borderRadius: 24,
     borderWidth: 1,
     gap: 10,
   },
   input: {
     flex: 1,
-    fontSize: 15,
-    maxHeight: 100,
-    paddingHorizontal: 4,
-    paddingVertical: 4,
+    fontSize: 16,
+    maxHeight: 120,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
   },
   sendButton: {
     width: 38,

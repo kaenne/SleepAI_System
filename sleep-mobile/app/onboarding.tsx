@@ -23,6 +23,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { StorageKeys } from '@/constants/storage';
 import { BorderRadius, Spacing } from '@/constants/theme';
 import { useTranslation } from '@/contexts/i18n-context';
 
@@ -58,7 +59,7 @@ const SLIDES = [
   },
 ];
 
-export const ONBOARDING_KEY = 'sleepai_onboarding_done';
+export const ONBOARDING_KEY = StorageKeys.ONBOARDING_DONE;
 
 export default function OnboardingScreen() {
   const { t } = useTranslation();

@@ -1,7 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as React from 'react';
+import { StorageKeys } from '@/constants/storage';
 
-const PROFILE_KEY = 'sleepai_user_profile';
+const PROFILE_KEY = StorageKeys.USER_PROFILE;
 
 export type UserProfile = {
   age: number | null;       // 1-100

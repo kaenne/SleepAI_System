@@ -49,8 +49,9 @@ export default function AddSleepEntryModal() {
       Alert.alert(t('modal.savedTitle'), t('modal.savedMsg'), [
         { text: t('common.ok'), onPress: () => router.back() },
       ]);
-    } catch (e: any) {
-      Alert.alert(t('common.error'), e?.message || t('modal.errorMsg'));
+    } catch (e: unknown) {
+      const err = e as { message?: string };
+      Alert.alert(t('common.error'), err?.message || t('modal.errorMsg'));
     } finally {
       setIsSubmitting(false);
     }

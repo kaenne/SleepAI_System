@@ -2,8 +2,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as React from 'react';
 import { api } from '@/services/api';
 import { useAuth } from '@/contexts/auth-context';
+import { StorageKeys } from '@/constants/storage';
 
-const STORAGE_KEY_BASE = 'sleepMobile.sleepJournalEntries.v1';
+const STORAGE_KEY_BASE = StorageKeys.JOURNAL_ENTRIES_BASE;
 
 export type SleepStressEntry = {
   id: string;
@@ -169,8 +170,9 @@ export function useSleepJournal() {
 
       loaded.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
       setEntries(loaded);
-    } catch (e: any) {
-      setError(e?.message ?? 'Failed to load entries');
+    } catch (e: unknown) {
+      const err = e as { message?: string };
+      setError(err?.message ?? 'Failed to load entries');
     } finally {
       setIsLoading(false);
     }
@@ -194,8 +196,9 @@ export function useSleepJournal() {
 
       setEntries((previous) => {
         const next = [newEntry, ...previous];
-        void writeEntries(key, next).catch((e: any) => {
-          setError(e?.message ?? 'Failed to save entry');
+        void writeEntries(key, next).catch((e: unknown) => {
+          const err = e as { message?: string };
+          setError(err?.message ?? 'Failed to save entry');
         });
         return next;
       });

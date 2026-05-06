@@ -65,6 +65,7 @@ const MAPPING = {
   'brain.head.profile':                       'hardware-chip',
   'sparkles':                                 'sparkles',
   'bolt.fill':                                'flash',
+  'bolt.horizontal.circle.fill':              'flash',
   'flame.fill':                               'flame',
   'drop.fill':                                'water',
   'wind':                                     'cloudy-night',

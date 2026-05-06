@@ -405,14 +405,11 @@ export default function StatsScreen() {
           <Card variant="elevated">
             <View style={styles.chartTitleRow}>
               <ThemedText type="subtitle">{t('stats.lastWeek')}</ThemedText>
-              {recent7.length === 0 && (
-                <ThemedText style={[styles.sampleLabel, { color: colors.textSecondary }]}>{t('stats.sampleLabel')}</ThemedText>
-              )}
             </View>
             {recent7.length === 0 ? (
               <View style={styles.emptyChart}>
                 <IconSymbol name="chart.line.uptrend.xyaxis" size={40} color={colors.tint} />
-                <ThemedText style={[styles.emptyChartText, { color: colors.textSecondary }]}>{t('stats.noData')}</ThemedText>
+                <ThemedText style={[styles.emptyChartText, { color: colors.textSecondary }]}>{t('common.noData')}</ThemedText>
               </View>
             ) : (
               <View style={styles.chartContainer}>
@@ -436,14 +433,11 @@ export default function StatsScreen() {
           <Card variant="elevated">
             <View style={styles.chartTitleRow}>
               <ThemedText type="subtitle">{t('stats.stressDynamics')}</ThemedText>
-              {recent7.length === 0 && (
-                <ThemedText style={[styles.sampleLabel, { color: colors.textSecondary }]}>{t('stats.sampleLabel')}</ThemedText>
-              )}
             </View>
             {recent7.length === 0 ? (
               <View style={styles.emptyChart}>
                 <IconSymbol name="waveform.path.ecg" size={40} color={colors.accent} />
-                <ThemedText style={[styles.emptyChartText, { color: colors.textSecondary }]}>{t('stats.noData')}</ThemedText>
+                <ThemedText style={[styles.emptyChartText, { color: colors.textSecondary }]}>{t('common.noData')}</ThemedText>
               </View>
             ) : (
               <View style={styles.chartContainer}>

@@ -25,7 +25,6 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useGoogleAuth } from '@/hooks/use-google-auth';
 import { useResponsive } from '@/hooks/use-responsive';
 import { api } from '@/services/api';
-import { DEBUG_USE_MOCK_AUTH, getMockCredentials } from '@/services/auth';
 
 export default function LoginScreen() {
   const colorScheme = useColorScheme() ?? 'light';
@@ -46,11 +45,12 @@ export default function LoginScreen() {
       const result = await api.googleLogin(accessToken);
       if (result?.tokens?.accessToken) {
         // Auth context — store tokens and navigate
-        await login({ _googleToken: accessToken } as any);
+        await login({ email: '', password: '', googleToken: accessToken } as any);
       }
       router.replace('/(tabs)');
-    } catch (e: any) {
-      setGoogleError(e?.message ?? t('login.googleError'));
+    } catch (e: unknown) {
+      const err = e as { message?: string };
+      setGoogleError(err?.message ?? (t('login.googleError') as string));
     }
   };
 
@@ -58,19 +58,19 @@ export default function LoginScreen() {
 
   const validateForm = () => {
     if (!email.trim()) {
-      setValidationError(t('login.validate_email_empty'));
+      setValidationError(t('login.validate_email_empty') as string);
       return false;
     }
     if (!email.includes('@')) {
-      setValidationError(t('login.validate_email_invalid'));
+      setValidationError(t('login.validate_email_invalid') as string);
       return false;
     }
     if (!password) {
-      setValidationError(t('login.validate_password_empty'));
+      setValidationError(t('login.validate_password_empty') as string);
       return false;
     }
     if (password.length < 6) {
-      setValidationError(t('login.validate_password_short'));
+      setValidationError(t('login.validate_password_short') as string);
       return false;
     }
     setValidationError(null);
@@ -84,8 +84,9 @@ export default function LoginScreen() {
     try {
       await login({ email: email.trim().toLowerCase(), password });
       router.replace('/(tabs)');
-    } catch (e: any) {
-      Alert.alert(t('login.errorTitle'), e?.message || t('login.errorFallback'));
+    } catch (error: unknown) {
+      const err = error as { message?: string };
+      Alert.alert(t('login.errorTitle') as string, err?.message || (t('login.errorFallback') as string));
     }
   };
 
@@ -138,7 +139,7 @@ export default function LoginScreen() {
                 <IconSymbol name="envelope.fill" size={20} color={colors.muted} />
                 <TextInput
                   style={[styles.input, { color: colors.text }]}
-                    placeholder={t('login.emailPlaceholder')}
+                  placeholder={t('login.emailPlaceholder') as string}
                   placeholderTextColor={colors.muted}
                   value={email}
                   onChangeText={(text) => {
@@ -171,7 +172,7 @@ export default function LoginScreen() {
                 <IconSymbol name="lock.fill" size={20} color={colors.muted} />
                 <TextInput
                   style={[styles.input, { color: colors.text }]}
-                    placeholder={t('login.passwordPlaceholder')}
+                  placeholder={t('login.passwordPlaceholder') as string}
                   placeholderTextColor={colors.muted}
                   value={password}
                   onChangeText={(text) => {
@@ -194,7 +195,10 @@ export default function LoginScreen() {
             </View>
 
             {/* Forgot Password */}
-            <Pressable style={styles.forgotPassword}>
+            <Pressable 
+              onPress={() => Alert.alert('Восстановление пароля', 'Функция сброса пароля находится в разработке и будет добавлена в следующих версиях.')}
+              style={styles.forgotPassword}
+            >
               <ThemedText style={[styles.forgotPasswordText, { color: colors.tint }]}>
                 {t('login.forgotPassword')}
               </ThemedText>
@@ -282,38 +286,14 @@ export default function LoginScreen() {
               </ThemedText>
             )}
 
-            {/* Development Mode - Mock Credentials */}
-            {DEBUG_USE_MOCK_AUTH && (
-              <View style={[styles.mockCredentials, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}>
-                <ThemedText style={[styles.mockTitle, { color: colors.tint }]}>
-                  🧪 DEV MODE - Test Credentials
-                </ThemedText>
-                {getMockCredentials().map((cred, idx) => (
-                  <Pressable
-                    key={idx}
-                    onPress={() => {
-                      setEmail(cred.email);
-                      setPassword(cred.password);
-                    }}
-                    style={[styles.mockCredential, { backgroundColor: colors.inputBackground }]}
-                  >
-                    <ThemedText style={styles.mockCredentialText}>
-                      📧 {cred.email}
-                    </ThemedText>
-                    <ThemedText style={[styles.mockCredentialPassword, { color: colors.muted }]}>
-                      🔑 {cred.password}
-                    </ThemedText>
-                  </Pressable>
-                ))}
-              </View>
-            )}
+            {/* Development Mode - Mock Credentials Removed for Production */}
 
             {/* Register Link */}
             <View style={styles.registerContainer}>
               <ThemedText style={[styles.registerText, { color: colors.textSecondary }]}>
                 {t('login.noAccount')}
               </ThemedText>
-              <Link href={'/register' as any} asChild replace>
+              <Link href={'/register'} asChild replace>
                 <Pressable>
                   <ThemedText style={[styles.registerLink, { color: colors.tint }]}>
                     {t('login.registerLink')}

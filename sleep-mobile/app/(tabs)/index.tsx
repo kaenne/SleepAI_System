@@ -1,7 +1,6 @@
-import { router } from 'expo-router';
 import * as React from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
-import Animated, { FadeIn, FadeInUp } from 'react-native-reanimated';
+import { StyleSheet, View } from 'react-native';
+import Animated, { FadeInUp } from 'react-native-reanimated';
 
 import ParallaxScrollView from '@/components/parallax-scroll-view';
 import { SleepTimer } from '@/components/sleep-timer';
@@ -14,7 +13,6 @@ import { QuickEntryForm } from '@/components/home/quick-entry-form';
 import { QuickStatsRow } from '@/components/home/quick-stats-row';
 import { SleepTrendSparkline } from '@/components/home/sleep-trend-sparkline';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
-import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors, Spacing } from '@/constants/theme';
 import { useUser } from '@/contexts/auth-context';
 import { useTranslation } from '@/contexts/i18n-context';
@@ -28,15 +26,16 @@ export default function HomeScreen() {
   const user = useUser();
   const { entries } = useSleepJournal();
   const { status: backendStatus } = useBackendStatus();
-  const { t } = useTranslation();
+  const { t, tArray } = useTranslation();
 
   const [showAddEntry, setShowAddEntry] = React.useState(false);
   const [lastInsight, setLastInsight] = React.useState<string | null>(null);
 
   const todayTip = React.useMemo(() => {
-    const tips = t('home.tips') as unknown as string[];
+    const tips = tArray('home.tips');
+    if (tips.length === 0) return '';
     return tips[new Date().getDate() % tips.length];
-  }, [t]);
+  }, [tArray]);
 
   const latestEntry = entries[0];
   const todaySleep = latestEntry?.sleepHours ?? 7.5;
@@ -66,7 +65,7 @@ export default function HomeScreen() {
         }}
         headerImage={
           <HomeHeader
-            userName={user?.name?.split(' ')[0] || t('home.greetingFallback')}
+            userName={user?.name?.split(' ')[0] || (t('home.greetingFallback'))}
             isOnline={backendStatus.isOnline}
             colorScheme={colorScheme}
             greeting={t('home.greeting')}
@@ -76,7 +75,7 @@ export default function HomeScreen() {
           />
         }
       >
-        <View style={styles.contentContainer}>
+        <Animated.View style={styles.contentContainer} entering={FadeInUp.springify()}>
           <HomeActionBar
             colorScheme={colorScheme}
             tintColor={colors.tint}
@@ -95,64 +94,34 @@ export default function HomeScreen() {
             }} />
           )}
 
-          <Animated.View entering={FadeInUp.delay(100).springify()}>
-            <SleepTimer />
-          </Animated.View>
+          <SleepTimer />
 
-          <Animated.View entering={FadeInUp.delay(150).springify()}>
-            <StressMonitor />
-          </Animated.View>
+          <StressMonitor />
 
-          <Animated.View entering={FadeInUp.delay(200).springify()}>
-            <QuickStatsRow
-              todaySleep={todaySleep}
-              sleepQuality={sleepQuality}
-              stressLevel={stressLevel}
-              currentStreak={currentStreak}
-            />
-          </Animated.View>
+          <QuickStatsRow
+            todaySleep={todaySleep}
+            sleepQuality={sleepQuality}
+            stressLevel={stressLevel}
+            currentStreak={currentStreak}
+          />
 
           {entries.length >= 2 && (
-            <Animated.View entering={FadeInUp.delay(250).springify()}>
-              <ErrorBoundary>
-                <SleepTrendSparkline entries={entries} />
-              </ErrorBoundary>
-            </Animated.View>
+            <ErrorBoundary>
+              <SleepTrendSparkline entries={entries} />
+            </ErrorBoundary>
           )}
 
           {latestEntry && (
-            <Animated.View entering={FadeInUp.delay(300).springify()}>
-              <ErrorBoundary>
-                <AiPredictionCard entry={latestEntry} />
-              </ErrorBoundary>
-            </Animated.View>
+            <ErrorBoundary>
+              <AiPredictionCard entry={latestEntry} />
+            </ErrorBoundary>
           )}
 
-          <Animated.View entering={FadeInUp.delay(350).springify()}>
-            <AiTipCard tip={todayTip} />
-          </Animated.View>
+          <AiTipCard tip={todayTip} />
 
           {lastInsight && <AiInsightCard insight={lastInsight} />}
-        </View>
-      </ParallaxScrollView>
-
-      {!showAddEntry && (
-        <Animated.View entering={FadeIn.delay(600).duration(400)} style={styles.fabContainer}>
-          <Pressable
-            onPress={() => router.push('/modal')}
-            style={({ pressed }) => [
-              styles.fab,
-              {
-                backgroundColor: colors.tint,
-                opacity: pressed ? 0.8 : 1,
-                transform: [{ scale: pressed ? 0.95 : 1 }],
-              },
-            ]}
-          >
-            <IconSymbol name="plus" size={28} color="#FFFFFF" />
-          </Pressable>
         </Animated.View>
-      )}
+      </ParallaxScrollView>
     </View>
   );
 }
@@ -160,17 +129,4 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   contentContainer: { paddingTop: Spacing.sm, gap: Spacing.lg, paddingBottom: 100 },
-  fabContainer: { position: 'absolute', bottom: 24, right: 24, zIndex: 100 },
-  fab: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 8,
-  },
 });

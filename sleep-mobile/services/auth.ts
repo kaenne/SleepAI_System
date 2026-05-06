@@ -2,11 +2,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 import { mockAuthApi } from './mock-auth';
 import { type ApiError, httpRequest } from './http-client';
+import { StorageKeys } from '@/constants/storage';
 export type { ApiError };
 
-const AUTH_TOKEN_KEY = 'sleepMind.authToken';
-const REFRESH_TOKEN_KEY = 'sleepMind.refreshToken';
-const USER_KEY = 'sleepMind.user';
+const AUTH_TOKEN_KEY = StorageKeys.AUTH_TOKEN;
+const REFRESH_TOKEN_KEY = StorageKeys.REFRESH_TOKEN;
+const USER_KEY = StorageKeys.USER;
 
 // Mock auth is only enabled in development builds with no backend URL configured.
 // __DEV__ is always false in production APK/IPA — credentials will never appear in prod.
