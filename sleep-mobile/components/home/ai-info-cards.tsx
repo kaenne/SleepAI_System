@@ -2,7 +2,6 @@ import * as React from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
-import { Card } from '@/components/ui/card';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
@@ -16,19 +15,26 @@ type AiTipCardProps = {
 
 export function AiTipCard({ tip }: AiTipCardProps) {
   const colorScheme = useColorScheme() ?? 'light';
+  const isDark = colorScheme === 'dark';
   const colors = Colors[colorScheme];
   const { t } = useTranslation();
 
   return (
-    <Card variant="elevated" style={styles.card}>
-      <View style={styles.row}>
-        <View style={[styles.iconWrapper, { backgroundColor: `${colors.accent}20` }]}>
-          <IconSymbol name="sparkles" size={18} color={colors.accent} />
+    <View style={[styles.card, {
+      backgroundColor: isDark ? '#1E1E2D' : '#FFFFFF',
+      borderColor: isDark ? '#2C2C3E' : '#E5E7EB',
+    }]}>
+      <View style={[styles.accentBar, { backgroundColor: colors.tint }]} />
+      <View style={styles.inner}>
+        <View style={styles.row}>
+          <View style={[styles.iconWrapper, { backgroundColor: isDark ? '#2D234A' : `${colors.tint}18` }]}>
+            <IconSymbol name="sparkles" size={16} color={colors.tint} />
+          </View>
+          <ThemedText style={[styles.title, { color: isDark ? '#E2D8F0' : '#1F2937' }]}>{t('home.aiTipTitle')}</ThemedText>
         </View>
-        <ThemedText style={styles.title}>{t('home.aiTipTitle')}</ThemedText>
+        <ThemedText style={[styles.body, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>{tip}</ThemedText>
       </View>
-      <ThemedText style={[styles.body, { color: colors.textSecondary }]}>{tip}</ThemedText>
-    </Card>
+    </View>
   );
 }
 
@@ -38,50 +44,67 @@ type AiInsightCardProps = {
 
 export function AiInsightCard({ insight }: AiInsightCardProps) {
   const colorScheme = useColorScheme() ?? 'light';
+  const isDark = colorScheme === 'dark';
   const colors = Colors[colorScheme];
   const { t } = useTranslation();
 
   return (
     <Animated.View entering={FadeIn.duration(300)}>
-      <Card variant="elevated" style={styles.card}>
-        <View style={styles.row}>
-          <View style={[styles.iconWrapper, { backgroundColor: `${colors.success}20` }]}>
-            <IconSymbol name="bolt.fill" size={18} color={colors.success} />
+      <View style={[styles.card, {
+        backgroundColor: isDark ? '#1E1E2D' : '#FFFFFF',
+        borderColor: isDark ? '#2C2C3E' : '#E5E7EB',
+      }]}>
+        <View style={[styles.accentBar, { backgroundColor: colors.success }]} />
+        <View style={styles.inner}>
+          <View style={styles.row}>
+            <View style={[styles.iconWrapper, { backgroundColor: isDark ? '#1A3B2E' : `${colors.success}18` }]}>
+              <IconSymbol name="bolt.fill" size={16} color={colors.success} />
+            </View>
+            <ThemedText style={[styles.title, { color: isDark ? '#E2D8F0' : '#1F2937' }]}>{t('home.aiInsightTitle')}</ThemedText>
           </View>
-          <ThemedText style={styles.title}>{t('home.aiInsightTitle')}</ThemedText>
+          <ThemedText style={[styles.body, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>{insight}</ThemedText>
         </View>
-        <ThemedText style={[styles.body, { color: colors.textSecondary }]}>{insight}</ThemedText>
-      </Card>
+      </View>
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 24,
-    padding: Spacing.lg,
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(150,150,150,0.1)',
+    flexDirection: 'row',
+    overflow: 'hidden',
+  },
+  accentBar: {
+    width: 4,
+    borderRadius: 2,
+    margin: 14,
+    marginRight: 0,
+  },
+  inner: {
+    flex: 1,
+    padding: Spacing.md,
+    gap: 8,
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
     gap: 8,
   },
   iconWrapper: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
+    width: 32,
+    height: 32,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
   },
   title: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
   },
   body: {
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: 14,
+    lineHeight: 20,
   },
 });

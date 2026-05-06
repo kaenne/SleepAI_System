@@ -25,6 +25,22 @@ export function StressMonitor() {
   const colors = Colors[colorScheme ?? 'light'];
   const { t } = useTranslation();
 
+  const getStressBgColor = (level: StressLevel) => {
+    switch (level) {
+      case 'LOW': return '#1A3B2E';
+      case 'MEDIUM': return '#2D234A';
+      case 'HIGH': return '#4A1D2E';
+    }
+  };
+
+  const getStressTextColor = (level: StressLevel) => {
+    switch (level) {
+      case 'LOW': return '#4ADE80';
+      case 'MEDIUM': return '#A78BFA';
+      case 'HIGH': return '#F87171';
+    }
+  };
+
   const {
     latestStress,
     history,
@@ -174,8 +190,8 @@ export function StressMonitor() {
           style={[
             styles.resultCard,
             {
-              backgroundColor: getStressColor(measurementResult.level) + '20',
-              borderColor: getStressColor(measurementResult.level),
+              backgroundColor: isDark ? getStressBgColor(measurementResult.level) : getStressColor(measurementResult.level) + '20',
+              borderColor: isDark ? getStressTextColor(measurementResult.level) + '40' : getStressColor(measurementResult.level),
               opacity: fadeAnim,
             },
           ]}
@@ -188,10 +204,10 @@ export function StressMonitor() {
               <View
                 style={[
                   styles.levelBadge,
-                  { backgroundColor: getStressColor(measurementResult.level) },
+                  { backgroundColor: isDark ? getStressBgColor(measurementResult.level) : getStressColor(measurementResult.level) },
                 ]}
               >
-                <Text style={styles.levelText}>
+                <Text style={[styles.levelText, isDark && { color: getStressTextColor(measurementResult.level) }]}>
                   {measurementResult.level === 'LOW'
                     ? t('stress.level_low')
                     : measurementResult.level === 'MEDIUM'
@@ -212,7 +228,7 @@ export function StressMonitor() {
         <View
           style={[
             styles.latestReading,
-            { backgroundColor: isDark ? '#1a1a2e' : '#f5f5f5' },
+            { backgroundColor: isDark ? '#151522' : '#f5f5f5', borderWidth: 1, borderColor: isDark ? '#2C2C3E' : 'transparent' },
           ]}
         >
           <Text style={[styles.latestLabel, { color: colors.textSecondary }]}>
@@ -230,11 +246,10 @@ export function StressMonitor() {
           <View
             style={[
               styles.latestLevel,
-              { backgroundColor: getStressColor(latestStress.stressLevel) },
+              { backgroundColor: isDark ? getStressBgColor(latestStress.stressLevel) : getStressColor(latestStress.stressLevel) },
             ]}
           >
-            <Text style={styles.levelText}>
-              {getStressEmoji(latestStress.stressLevel)}{' '}
+            <Text style={[styles.levelText, isDark && { color: getStressTextColor(latestStress.stressLevel) }]}>
               {latestStress.stressLevel === 'LOW'
                 ? t('stress.level_low')
                 : latestStress.stressLevel === 'MEDIUM'
@@ -259,8 +274,11 @@ export function StressMonitor() {
                 style={[
                   styles.historyItem,
                   {
-                    backgroundColor: isDark ? '#1a1a2e' : '#f5f5f5',
-                    borderLeftColor: getStressColor(item.stressLevel),
+                    backgroundColor: isDark ? '#151522' : '#f5f5f5',
+                    borderWidth: isDark ? 1 : 0,
+                    borderColor: isDark ? '#2C2C3E' : 'transparent',
+                    borderLeftWidth: 4,
+                    borderLeftColor: isDark ? getStressTextColor(item.stressLevel) : getStressColor(item.stressLevel),
                   },
                 ]}
               >
@@ -272,9 +290,6 @@ export function StressMonitor() {
                 >
                   {formatTime(item.timestamp)}
                 </Text>
-                <Text style={styles.historyEmoji}>
-                  {getStressEmoji(item.stressLevel)}
-                </Text>
               </View>
             ))}
           </ScrollView>
@@ -285,7 +300,7 @@ export function StressMonitor() {
       <View
         style={[
           styles.tipsSection,
-          { backgroundColor: isDark ? '#1a1a2e' : '#e8f5e9' },
+          { backgroundColor: isDark ? '#151522' : '#e8f5e9', borderWidth: isDark ? 1 : 0, borderColor: isDark ? '#2C2C3E' : 'transparent' },
         ]}
       >
         <Text style={[styles.tipsTitle, { color: colors.text }]}>

@@ -7,8 +7,6 @@ import {
 } from 'react-native';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ThemedText } from '@/components/themed-text';
 import { BorderRadius, Colors, Spacing } from '@/constants/theme';
@@ -33,9 +31,9 @@ type Props = {
 
 export function QuickEntryForm({ onEntrySaved }: Props) {
   const colorScheme = useColorScheme() ?? 'light';
+  const isDark = colorScheme === 'dark';
   const colors = Colors[colorScheme];
   const textColor = useThemeColor({}, 'text');
-  const iconColor = useThemeColor({}, 'icon');
   const { t } = useTranslation();
   const { addEntry } = useSleepJournal();
 
@@ -112,16 +110,20 @@ export function QuickEntryForm({ onEntrySaved }: Props) {
 
   return (
     <Animated.View entering={FadeIn.duration(300)}>
-      <Card variant="elevated" style={styles.card}>
+      <View style={[styles.card, { backgroundColor: isDark ? '#1E1E2D' : '#FFFFFF', borderColor: isDark ? '#2C2C3E' : '#E5E7EB' }]}>
+        {/* Card header */}
         <View style={styles.headerRow}>
-          <View style={[styles.iconWrapper, { backgroundColor: `${colors.tint}20` }]}>
-            <IconSymbol name="moon.stars.fill" size={20} color={colors.tint} />
+          <View style={[styles.iconWrapper, { backgroundColor: isDark ? '#2D234A' : `${colors.tint}18` }]}>
+            <IconSymbol name="moon.stars.fill" size={18} color={colors.tint} />
           </View>
-          <ThemedText type="subtitle" style={{ flex: 1 }}>{t('home.sleepRecord')}</ThemedText>
+          <ThemedText style={styles.cardTitle}>{t('home.sleepRecord')}</ThemedText>
         </View>
 
+        {/* 2x2 Input Grid */}
         <View style={styles.inputRow}>
           <InputField
+            icon="moon.fill"
+            iconColor="#FBBF24"
             label={t('home.sleepHours')}
             value={sleepHoursText}
             onChangeText={setSleepHoursText}
@@ -129,24 +131,28 @@ export function QuickEntryForm({ onEntrySaved }: Props) {
             placeholder="7.5"
             suffix="h"
             textColor={textColor}
-            iconColor={iconColor}
             colors={colors}
+            isDark={isDark}
           />
           <InputField
+            icon="bolt.heart.fill"
+            iconColor="#F87171"
             label={t('home.stress')}
             value={stressLevelText}
             onChangeText={setStressLevelText}
             keyboardType="number-pad"
             placeholder="4"
-            suffixIcon="bolt.heart.fill"
+            suffix="/10"
             textColor={textColor}
-            iconColor={iconColor}
             colors={colors}
+            isDark={isDark}
           />
         </View>
 
         <View style={styles.inputRow}>
           <InputField
+            icon="clock.fill"
+            iconColor="#60A5FA"
             label={t('home.bedtime')}
             value={bedtimeHourText}
             onChangeText={setBedtimeHourText}
@@ -154,10 +160,12 @@ export function QuickEntryForm({ onEntrySaved }: Props) {
             placeholder="23"
             suffix=":00"
             textColor={textColor}
-            iconColor={iconColor}
             colors={colors}
+            isDark={isDark}
           />
           <InputField
+            icon="bolt.fill"
+            iconColor="#4ADE80"
             label={t('home.activity')}
             value={activityText}
             onChangeText={setActivityText}
@@ -165,23 +173,31 @@ export function QuickEntryForm({ onEntrySaved }: Props) {
             placeholder="30"
             suffix="m"
             textColor={textColor}
-            iconColor={iconColor}
             colors={colors}
+            isDark={isDark}
           />
         </View>
 
+        {/* Buttons */}
         <View style={styles.buttonRow}>
-          <View style={{ flex: 1 }}>
-            <Button title={t('common.save')} onPress={onSave} variant="primary" />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Button
-              title={isPredicting ? t('home.analyzing') : t('home.aiAnalysis')}
-              onPress={handlePredictSleep}
-              variant="secondary"
-              disabled={isPredicting}
-            />
-          </View>
+          <Pressable
+            onPress={onSave}
+            style={[styles.btnSecondary, { borderColor: isDark ? '#2C2C3E' : '#E5E7EB', backgroundColor: 'transparent' }]}
+          >
+            <ThemedText style={[styles.btnText, { color: isDark ? '#E2D8F0' : colors.text }]}>
+              {t('common.save')}
+            </ThemedText>
+          </Pressable>
+          <Pressable
+            onPress={handlePredictSleep}
+            disabled={isPredicting}
+            style={[styles.btnPrimary, { backgroundColor: colors.tint, opacity: isPredicting ? 0.7 : 1 }]}
+          >
+            <IconSymbol name="sparkles" size={15} color="#1a1228" />
+            <ThemedText style={styles.btnPrimaryText}>
+              {isPredicting ? t('home.analyzing') : t('home.aiAnalysis')}
+            </ThemedText>
+          </Pressable>
         </View>
 
         {aiPrediction !== null && (
@@ -206,7 +222,7 @@ export function QuickEntryForm({ onEntrySaved }: Props) {
             t={t}
           />
         )}
-      </Card>
+      </View>
     </Animated.View>
   );
 }
@@ -214,42 +230,46 @@ export function QuickEntryForm({ onEntrySaved }: Props) {
 // ─── Sub-components ────────────────────────────────────────────────────────────
 
 type InputFieldProps = {
+  icon: string;
+  iconColor: string;
   label: string;
   value: string;
   onChangeText: (v: string) => void;
   keyboardType: 'decimal-pad' | 'number-pad';
   placeholder: string;
   suffix?: string;
-  suffixIcon?: string;
   textColor: string;
-  iconColor: string;
   colors: any;
+  isDark: boolean;
 };
 
 function InputField({
-  label, value, onChangeText, keyboardType, placeholder,
-  suffix, suffixIcon, textColor, iconColor, colors,
+  icon, iconColor, label, value, onChangeText, keyboardType,
+  placeholder, suffix, textColor, colors, isDark,
 }: InputFieldProps) {
   return (
     <View style={styles.inputField}>
-      <ThemedText type="caption" style={styles.inputLabel}>{label}</ThemedText>
+      {/* Icon + label */}
+      <View style={styles.inputLabelRow}>
+        <View style={[styles.inputIconBadge, { backgroundColor: `${iconColor}22` }]}>
+          <IconSymbol name={icon as any} size={12} color={iconColor} />
+        </View>
+        <ThemedText style={[styles.inputLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>{label}</ThemedText>
+      </View>
       <View style={[styles.inputContainer, {
-        backgroundColor: colors.inputBackground,
-        borderColor: colors.inputBorder,
+        backgroundColor: isDark ? '#151522' : colors.inputBackground,
+        borderColor: isDark ? '#2C2C3E' : colors.inputBorder,
       }]}>
         <TextInput
           value={value}
           onChangeText={onChangeText}
           keyboardType={keyboardType}
           placeholder={placeholder}
-          placeholderTextColor={iconColor}
-          style={[styles.input, { color: textColor }]}
+          placeholderTextColor={isDark ? '#4B5563' : '#9CA3AF'}
+          style={[styles.input, { color: textColor, fontWeight: '600', fontSize: 18 }]}
         />
         {suffix && (
-          <ThemedText style={{ color: iconColor, paddingRight: 10 }}>{suffix}</ThemedText>
-        )}
-        {suffixIcon && (
-          <IconSymbol name={suffixIcon as any} size={16} color={iconColor} style={{ paddingRight: 10 }} />
+          <ThemedText style={[styles.inputSuffix, { color: isDark ? '#6B7280' : '#9CA3AF' }]}>{suffix}</ThemedText>
         )}
       </View>
     </View>
@@ -395,10 +415,9 @@ function AiPredictionResult({
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 24,
+    borderRadius: 20,
     padding: Spacing.lg,
     borderWidth: 1,
-    borderColor: 'rgba(150,150,150,0.1)',
   },
   headerRow: {
     flexDirection: 'row',
@@ -407,22 +426,38 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   iconWrapper: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
+    width: 34,
+    height: 34,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
   },
+  cardTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
   inputRow: {
     flexDirection: 'row',
-    gap: Spacing.md,
-    marginBottom: Spacing.md,
+    gap: Spacing.sm,
+    marginBottom: Spacing.sm,
   },
   inputField: { flex: 1 },
-  inputLabel: {
+  inputLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     marginBottom: 6,
+  },
+  inputIconBadge: {
+    width: 20,
+    height: 20,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  inputLabel: {
+    fontSize: 12,
     fontWeight: '500',
-    opacity: 0.8,
   },
   inputContainer: {
     flexDirection: 'row',
@@ -433,15 +468,44 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    height: 46,
+    height: 52,
     paddingHorizontal: Spacing.md,
-    fontSize: 16,
+  },
+  inputSuffix: {
+    fontSize: 14,
     fontWeight: '500',
+    paddingRight: 12,
   },
   buttonRow: {
     flexDirection: 'row',
     gap: Spacing.sm,
-    marginTop: Spacing.xs,
+    marginTop: Spacing.sm,
+  },
+  btnSecondary: {
+    flex: 1,
+    height: 46,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  btnPrimary: {
+    flex: 1,
+    height: 46,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  btnText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  btnPrimaryText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1a1228',
   },
   predictionBox: {
     marginTop: Spacing.md,

@@ -43,14 +43,14 @@ export const Colors = {
   dark: {
     text: '#F9FAFB',              // Gray-50
     textSecondary: '#9CA3AF',     // Gray-400
-    background: '#111827',        // Gray-900
+    background: '#151522',        // Deep dark bluish gray
     tint: '#A78BFA',              // Violet-400
     icon: '#6B7280',              // Gray-500
     tabIconDefault: '#6B7280',
     tabIconSelected: '#A78BFA',
     // Extended palette for UI elements
-    cardBackground: '#1F2937',    // Gray-800
-    cardBorder: '#374151',        // Gray-700
+    cardBackground: '#1E1E2D',    // Matches Chat and AI modals
+    cardBorder: '#2C2C3E',        // Matches Chat borders
     success: '#34D399',           // Emerald-400
     warning: '#FBBF24',           // Amber-400
     danger: '#F87171',            // Red-400
@@ -62,8 +62,8 @@ export const Colors = {
     headerGradientMid: '#4C1D95',   // Violet-900
     headerGradientEnd: '#6D28D9',   // Violet-700
     // Input colors
-    inputBackground: '#1F2937',
-    inputBorder: '#374151',       // Gray-700
+    inputBackground: '#1E1E2D',
+    inputBorder: '#2C2C3E',       // Gray-700
     // Special colors
     sleepQuality: '#A78BFA',      // Violet-400
     heartRate: '#F87171',         // Red-400

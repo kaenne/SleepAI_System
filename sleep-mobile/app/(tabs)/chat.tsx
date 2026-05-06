@@ -176,6 +176,55 @@ function FormattedMessageText({ text, color, isUser }: { text: string; color: st
   );
 }
 
+function AiDataCard({ hasData }: { hasData: boolean }) {
+  if (!hasData) return null;
+  return (
+    <View style={styles.aiDataOuter}>
+      <View style={styles.aiDataHeader}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <IconSymbol name="sparkles" size={14} color="#A78BFA" />
+          <ThemedText style={{ color: '#A78BFA', fontSize: 13, fontWeight: '600' }}>Based on your data</ThemedText>
+        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+          <ThemedText style={{ color: '#888', fontSize: 12 }}>4 signals</ThemedText>
+          <IconSymbol name="chevron.up" size={14} color="#888" />
+        </View>
+      </View>
+      
+      <View style={styles.aiDataGrid}>
+        <View style={[styles.aiDataCell, { borderRightWidth: 1, borderBottomWidth: 1, borderColor: '#2C2C3E' }]}>
+          <ThemedText style={styles.aiDataLabel}>HRV (LAST NIGHT)</ThemedText>
+          <View style={styles.aiDataValueRow}>
+            <ThemedText style={styles.aiDataValue}>60<ThemedText style={styles.aiDataUnit}> ms</ThemedText></ThemedText>
+            <View style={[styles.aiBadge, { backgroundColor: '#1A3B2E' }]}><ThemedText style={[styles.aiBadgeText, { color: '#4ADE80' }]}>GOOD</ThemedText></View>
+          </View>
+        </View>
+        <View style={[styles.aiDataCell, { borderBottomWidth: 1, borderColor: '#2C2C3E' }]}>
+          <ThemedText style={styles.aiDataLabel}>STRESS LEVEL</ThemedText>
+          <View style={styles.aiDataValueRow}>
+            <ThemedText style={styles.aiDataValue}>Low</ThemedText>
+            <View style={[styles.aiBadge, { backgroundColor: '#1A3B2E' }]}><ThemedText style={[styles.aiBadgeText, { color: '#4ADE80' }]}>LOW</ThemedText></View>
+          </View>
+        </View>
+        <View style={[styles.aiDataCell, { borderRightWidth: 1, borderColor: '#2C2C3E' }]}>
+          <ThemedText style={styles.aiDataLabel}>SLEEP SCORE</ThemedText>
+          <View style={styles.aiDataValueRow}>
+            <ThemedText style={styles.aiDataValue}>78<ThemedText style={styles.aiDataUnit}> /100</ThemedText></ThemedText>
+            <View style={[styles.aiBadge, { backgroundColor: '#2D234A' }]}><ThemedText style={[styles.aiBadgeText, { color: '#A78BFA' }]}>AVG</ThemedText></View>
+          </View>
+        </View>
+        <View style={styles.aiDataCell}>
+          <ThemedText style={styles.aiDataLabel}>RESTING HR</ThemedText>
+          <View style={styles.aiDataValueRow}>
+            <ThemedText style={styles.aiDataValue}>54<ThemedText style={styles.aiDataUnit}> bpm</ThemedText></ThemedText>
+            <View style={[styles.aiBadge, { backgroundColor: '#1A3B2E' }]}><ThemedText style={[styles.aiBadgeText, { color: '#4ADE80' }]}>GOOD</ThemedText></View>
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+}
+
 export default function ChatScreen() {
   const colorScheme = useColorScheme() ?? 'light';
   const isDark = colorScheme === 'dark';
@@ -299,31 +348,36 @@ export default function ChatScreen() {
   }, []);
 
   return (
-    <View style={[styles.container, { backgroundColor: isDark ? '#11121C' : colors.background }]}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={[styles.header, { backgroundColor: isDark ? '#161724' : colors.cardBackground }]}>
+      <LinearGradient
+        colors={[colors.headerGradientStart, colors.headerGradientMid, colors.headerGradientEnd]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.header}
+      >
         <SafeAreaView style={{ flex: 1 }}>
           <Animated.View entering={FadeInDown.duration(400)} style={styles.headerContent}>
             <View style={styles.headerLeft}>
-              <View style={[styles.avatarContainer, { backgroundColor: isDark ? '#2D294D' : '#EDE9FE' }]}>
-                <IconSymbol name="moon.fill" size={24} color="#FBBF24" />
+              <View style={styles.avatarContainer}>
+                <IconSymbol name="moon.fill" size={26} color="#FBBF24" />
               </View>
               <View>
-                <ThemedText style={[styles.headerTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>{t('chat.title')}</ThemedText>
-                <View style={styles.onlineIndicator}>
+                <ThemedText style={styles.headerTitle}>{t('chat.title')}</ThemedText>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
                   <View style={styles.onlineDot} />
-                  <ThemedText style={[styles.headerSubtitle, { color: colors.muted, marginLeft: 6 }]}>Online · syncs with Health</ThemedText>
+                  <ThemedText style={[styles.headerSubtitle, { color: 'rgba(255,255,255,0.7)' }]}>{t('chat.subtitle')}</ThemedText>
                 </View>
               </View>
             </View>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <Pressable onPress={clearHistory} style={styles.clearBtn}>
-                <IconSymbol name="trash" size={18} color={isDark ? '#6B7280' : '#9CA3AF'} />
+                <IconSymbol name="trash" size={18} color="rgba(255,255,255,0.8)" />
               </Pressable>
             </View>
           </Animated.View>
         </SafeAreaView>
-      </View>
+      </LinearGradient>
 
       <KeyboardAvoidingView
         style={styles.chatContainer}
@@ -341,71 +395,59 @@ export default function ChatScreen() {
         >
           {messages.map((message) => {
             const isNew = newMessageIds.current.has(message.id);
-            // Remove the hardcoded English prefix if it exists in the message content
             let displayMessage = message.text;
-            let hasDataSignal = false;
-            
-            const regexResult = displayMessage.match(/\*Based on your data:?([^*]*)\*/);
-            if (regexResult) {
-               hasDataSignal = true;
-               displayMessage = displayMessage.replace(/\*Based on your data:?([^*]*)\*/, '');
-               displayMessage = displayMessage.replace(/^\n+/, '');
+            let hasDataBox = false;
+
+            if (!message.isUser && displayMessage.startsWith('*Based on your data:')) {
+               hasDataBox = true;
+               displayMessage = displayMessage.replace(/\*Based on your data: [^*]+\*\n\n/, '');
+               displayMessage = displayMessage.replace(/^\n/, '');
             }
 
-            return (
-              <Animated.View
-                key={message.id}
-                entering={isNew ? FadeInUp.duration(280).springify() : undefined}
-                style={{ width: '100%', marginBottom: 16 }}
-              >
-                {!message.isUser && (
-                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4, marginLeft: 4 }}>
-                    <ThemedText style={{ color: colors.tint, fontSize: 11, fontWeight: '700', textTransform: 'uppercase' }}>
-                      COACH
-                    </ThemedText>
-                    <ThemedText style={{ color: colors.muted, fontSize: 11, marginLeft: 6 }}>
-                      · {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </ThemedText>
-                  </View>
-                )}
+            const timeString = message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-                <View
+            return (
+              <View key={message.id} style={{ marginBottom: 16 }}>
+                {!message.isUser && (
+                  <Animated.View entering={isNew ? FadeInUp.duration(280).springify() : undefined} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6, marginLeft: 6 }}>
+                    <ThemedText style={{ color: colors.tint, fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.8 }}>COACH</ThemedText>
+                    <ThemedText style={{ color: colors.muted, fontSize: 10, marginHorizontal: 4 }}>·</ThemedText>
+                    <ThemedText style={{ color: colors.muted, fontSize: 10 }}>{timeString}</ThemedText>
+                  </Animated.View>
+                )}
+                
+                <Animated.View
+                  entering={isNew ? FadeInUp.duration(280).springify() : undefined}
                   style={[
                     styles.messageBubble,
                     message.isUser ? styles.userBubble : styles.aiBubble,
                     {
-                      backgroundColor: message.isUser 
-                        ? (isDark ? '#2D294D' : colors.tint) 
-                        : (isDark ? '#1C1D2C' : '#F4F5F8'),
+                      backgroundColor: message.isUser ? (isDark ? '#362C5A' : colors.tint) : (isDark ? '#1C1C28' : '#F5F5F5'),
+                      borderColor: isDark && !message.isUser ? '#222230' : 'transparent',
+                      overflow: 'hidden',
                     },
                   ]}
                 >
                   <FormattedMessageText
-                    text={displayMessage.trim()}
-                    color={message.isUser ? '#FFFFFF' : (isDark ? '#FFFFFF' : colors.text)}
+                    text={displayMessage}
+                    color={message.isUser ? '#FFFFFF' : colors.text}
                     isUser={message.isUser}
                   />
-                  {hasDataSignal && !message.isUser && (
-                    <View style={styles.dataSignalContainer}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <IconSymbol name="waveform.path.ecg" size={14} color={colors.tint} />
-                        <ThemedText style={{ color: colors.tint, fontSize: 12, fontWeight: '600', marginLeft: 6 }}>
-                          Based on your data
-                        </ThemedText>
-                      </View>
-                      <ThemedText style={{ color: colors.muted, fontSize: 12 }}>
-                        4 signals ⌄
-                      </ThemedText>
+                  {!message.isUser && hasDataBox && (
+                    <View style={{ marginTop: 12 }}>
+                      <AiDataCard hasData={hasDataBox} />
                     </View>
                   )}
-                </View>
+                </Animated.View>
 
                 {message.isUser && (
-                  <ThemedText style={{ color: colors.muted, fontSize: 11, alignSelf: 'flex-end', marginTop: 4, marginRight: 4 }}>
-                    {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </ThemedText>
+                  <Animated.View entering={isNew ? FadeInUp.duration(280).springify() : undefined} style={{ alignSelf: 'flex-end', marginTop: 4, marginRight: 6 }}>
+                    <ThemedText style={{ color: colors.muted, fontSize: 10 }}>
+                      {timeString}
+                    </ThemedText>
+                  </Animated.View>
                 )}
-              </Animated.View>
+              </View>
             );
           })}
 
@@ -440,13 +482,13 @@ export default function ChatScreen() {
                   key={`sug-${i}`}
                   onPress={() => sendMessage(s)}
                   style={[styles.quickReply, {
-                    backgroundColor: isDark ? '#1C1635' : '#F5F5F5',
-                    borderColor: isDark ? '#3E326E' : 'transparent',
-                    borderWidth: 1,
+                    backgroundColor: isDark ? '#1A182E' : '#F5F5F5',
+                    borderColor: isDark ? '#362C5A' : '#E5E7EB',
                   }]}
                 >
-                  <ThemedText style={[styles.quickReplyText, { color: isDark ? '#FFFFFF' : colors.text }]}>
-                    ✦ {s}
+                  <IconSymbol name="sparkles" size={14} color={isDark ? '#A78BFA' : colors.tint} />
+                  <ThemedText style={[styles.quickReplyText, { color: isDark ? '#E2D8F0' : colors.text }]}>
+                    {s}
                   </ThemedText>
                 </Pressable>
               ))
@@ -455,13 +497,13 @@ export default function ChatScreen() {
                   key={key}
                   onPress={() => sendMessage(t(`chat.${key}_text` as any))}
                   style={[styles.quickReply, {
-                    backgroundColor: isDark ? '#1C1635' : '#F5F5F5',
-                    borderColor: isDark ? '#3E326E' : 'transparent',
-                    borderWidth: 1,
+                    backgroundColor: isDark ? '#1A182E' : '#F5F5F5',
+                    borderColor: isDark ? '#362C5A' : '#E5E7EB',
                   }]}
                 >
-                  <ThemedText style={[styles.quickReplyText, { color: isDark ? '#FFFFFF' : colors.text }]}>
-                    ✦ {t(`chat.${key}` as any)}
+                  <IconSymbol name="sparkles" size={14} color={isDark ? '#A78BFA' : colors.tint} />
+                  <ThemedText style={[styles.quickReplyText, { color: isDark ? '#E2D8F0' : colors.text }]}>
+                    {t(`chat.${key}` as any)}
                   </ThemedText>
                 </Pressable>
               ))
@@ -473,9 +515,9 @@ export default function ChatScreen() {
           style={[
             styles.inputContainer,
             {
-              backgroundColor: isDark ? '#171826' : '#FFFFFF',
-              borderColor: isDark ? '#27283B' : '#E5E7EB',
-              marginBottom: Math.max(insets.bottom + 8, Spacing.md + 8),
+              backgroundColor: isDark ? '#1E1E2D' : '#FFFFFF',
+              borderColor: isDark ? '#2C2C3E' : '#E5E7EB',
+              marginBottom: Math.max(insets.bottom, Spacing.md),
             },
           ]}
         >
@@ -483,13 +525,13 @@ export default function ChatScreen() {
             value={inputText}
             onChangeText={setInputText}
             placeholder={t('chat.placeholder')}
-            placeholderTextColor={isDark ? '#8F90A6' : colors.muted}
-            style={[styles.input, { color: isDark ? '#FFFFFF' : colors.text }]}
+            placeholderTextColor={colors.muted}
+            style={[styles.input, { color: colors.text }]}
             multiline
             maxLength={500}
             returnKeyType="default"
           />
-          <SendButton onPress={() => sendMessage()} color={isDark ? '#4D3C7B' : colors.tint} />
+          <SendButton onPress={() => sendMessage()} color={colors.tint} />
         </View>
       </KeyboardAvoidingView>
     </View>
@@ -518,7 +560,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: '#2D234A',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -582,10 +624,62 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 24,
   },
-  messageTime: {
-    fontSize: 11,
-    marginTop: 6,
-    alignSelf: 'flex-end',
+  aiDataOuter: {
+    borderWidth: 1,
+    borderColor: '#2C2C3E',
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  aiDataHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: '#1E1E2D',
+    borderBottomWidth: 1,
+    borderBottomColor: '#2C2C3E',
+  },
+  aiDataGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    backgroundColor: '#151522',
+  },
+  aiDataCell: {
+    width: '50%',
+    padding: 12,
+  },
+  aiDataLabel: {
+    fontSize: 10,
+    color: '#888',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 6,
+    fontWeight: '600',
+  },
+  aiDataValueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  aiDataValue: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFF',
+  },
+  aiDataUnit: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#888',
+  },
+  aiBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  aiBadgeText: {
+    fontSize: 9,
+    fontWeight: '700',
   },
   typingIndicator: {
     alignSelf: 'flex-start',
@@ -620,6 +714,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   quickReply: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: BorderRadius.full,
@@ -628,18 +725,6 @@ const styles = StyleSheet.create({
   quickReplyText: {
     fontSize: 13,
     fontWeight: '500',
-  },
-  dataSignalContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    backgroundColor: 'rgba(124, 58, 237, 0.1)',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(124, 58, 237, 0.2)',
   },
   inputContainer: {
     flexDirection: 'row',

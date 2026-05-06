@@ -106,18 +106,21 @@ export function AiPredictionCard({ entry }: Props) {
   if (error) return null;
 
   const q = result?.predictedQuality ?? 0;
-  const qualityColor =
-    q >= 75 ? colors.success : q >= 50 ? colors.accent : colors.danger;
+  const qualityColor = '#4ADE80'; // Fixed green accent
+  const qualityBg = '#1A3B2E';    // Fixed dark green bg
+  const isDark = colorScheme === 'dark';
 
   return (
     <Animated.View entering={FadeIn.duration(400)}>
-      <Card variant="elevated" style={styles.card}>
+      <View style={[styles.card, isDark && styles.cardDark]}>
         {/* Header */}
-        <View style={styles.header}>
-          <View style={[styles.iconWrap, { backgroundColor: `${colors.tint}18` }]}>
-            <IconSymbol name="sparkles" size={18} color={colors.tint} />
+        <View style={[styles.header, isDark && styles.headerDark]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <IconSymbol name="sparkles" size={14} color={isDark ? "#A78BFA" : colors.tint} />
+            <ThemedText style={{ color: isDark ? '#A78BFA' : colors.tint, fontSize: 13, fontWeight: '600' }}>
+              {t('home.aiAnalysisTitle')}
+            </ThemedText>
           </View>
-          <ThemedText style={styles.title}>{t('home.aiAnalysisTitle')}</ThemedText>
           {loading && (
             <ActivityIndicator
               size="small"
@@ -128,115 +131,143 @@ export function AiPredictionCard({ entry }: Props) {
         </View>
 
         {result && (
-          <>
-            {/* Quality score */}
-            <View style={styles.scoreSection}>
-              <View style={styles.scoreRow}>
-                <ThemedText style={[styles.scorePct, { color: qualityColor }]}>
-                  {q.toFixed(0)}%
-                </ThemedText>
-                <ThemedText style={[styles.scoreLabel, { color: colors.textSecondary }]}>
-                  {t('home.qualityLabel')}
-                </ThemedText>
-              </View>
-              <View style={[styles.track, { backgroundColor: `${qualityColor}22` }]}>
-                <Animated.View
-                  style={[styles.fill, { backgroundColor: qualityColor }, qualityStyle]}
-                />
+          <View style={[styles.aiDataGrid, isDark && styles.aiDataGridDark]}>
+            {/* Quality score cell */}
+            <View style={[styles.aiDataCell, isDark && styles.sideBorder, isDark && styles.bottomBorder]}>
+              <ThemedText style={styles.aiDataLabel}>{t('home.qualityLabel').toUpperCase()}</ThemedText>
+              <View style={styles.aiDataValueRow}>
+                <ThemedText style={styles.aiDataValue}>{q.toFixed(0)}<ThemedText style={styles.aiDataUnit}> %</ThemedText></ThemedText>
+                <View style={[styles.aiBadge, { backgroundColor: qualityBg }]}><ThemedText style={[styles.aiBadgeText, { color: qualityColor }]}>GOOD</ThemedText></View>
               </View>
             </View>
 
-            {/* Phase chips */}
-            <View style={styles.phases}>
-              <View style={styles.phaseItem}>
-                <ThemedText style={[styles.phaseVal, { color: colors.remSleep }]}>
-                  {result.remPercentage.toFixed(0)}%
-                </ThemedText>
-                <ThemedText style={[styles.phaseLbl, { color: colors.textSecondary }]}>
-                  {t('home.remLabel')}
-                </ThemedText>
+            {/* REM phase cell */}
+            <View style={[styles.aiDataCell, isDark && styles.bottomBorder]}>
+              <ThemedText style={styles.aiDataLabel}>{t('home.remLabel').toUpperCase()}</ThemedText>
+              <View style={styles.aiDataValueRow}>
+                <ThemedText style={styles.aiDataValue}>{result.remPercentage.toFixed(0)}<ThemedText style={styles.aiDataUnit}> %</ThemedText></ThemedText>
+                <View style={[styles.aiBadge, { backgroundColor: '#2D234A' }]}><ThemedText style={[styles.aiBadgeText, { color: '#A78BFA' }]}>AVG</ThemedText></View>
               </View>
+            </View>
 
-              <View style={[styles.divider, { backgroundColor: colors.cardBorder }]} />
-
-              <View style={styles.phaseItem}>
-                <ThemedText style={[styles.phaseVal, { color: colors.deepSleep }]}>
-                  {result.deepSleepPercentage.toFixed(0)}%
-                </ThemedText>
-                <ThemedText style={[styles.phaseLbl, { color: colors.textSecondary }]}>
-                  {t('home.deepLabel')}
-                </ThemedText>
+            {/* Deep Sleep cell */}
+            <View style={[styles.aiDataCell, isDark && styles.sideBorder]}>
+              <ThemedText style={styles.aiDataLabel}>{t('home.deepLabel').toUpperCase()}</ThemedText>
+              <View style={styles.aiDataValueRow}>
+                <ThemedText style={styles.aiDataValue}>{result.deepSleepPercentage.toFixed(0)}<ThemedText style={styles.aiDataUnit}> %</ThemedText></ThemedText>
+                <View style={[styles.aiBadge, { backgroundColor: qualityBg }]}><ThemedText style={[styles.aiBadgeText, { color: qualityColor }]}>GOOD</ThemedText></View>
               </View>
+            </View>
 
-              <View style={[styles.divider, { backgroundColor: colors.cardBorder }]} />
-
-              <View style={styles.phaseItem}>
-                <ThemedText
-                  style={[
-                    styles.phaseVal,
-                    {
-                      color:
-                        result.awakeningsCategory === 0 ? colors.success : colors.danger,
-                    },
-                  ]}
-                >
+            {/* Awakenings cell */}
+            <View style={styles.aiDataCell}>
+              <ThemedText style={styles.aiDataLabel}>{t('home.awakeningsLabel').toUpperCase()}</ThemedText>
+              <View style={styles.aiDataValueRow}>
+                <ThemedText style={[styles.aiDataValue, { fontSize: 13 }]}>
                   {result.awakeningsCategory === 0 ? t('home.awakeningsNormal') : t('home.awakeningsDisturbed')}
                 </ThemedText>
-                <ThemedText style={[styles.phaseLbl, { color: colors.textSecondary }]}>
-                  {t('home.awakeningsLabel')}
-                </ThemedText>
               </View>
             </View>
+          </View>
+        )}
 
-            {/* SHAP factors */}
-            {result.topFactors.length > 0 && (
-              <View style={styles.factors}>
-                <ThemedText style={[styles.factorTitle, { color: colors.textSecondary }]}>
-                  {t('home.topFactorsTitle')}
-                </ThemedText>
-                {result.topFactors.map((f, i) => (
-                  <FactorBar
-                    key={i}
-                    label={f.feature}
-                    impact={f.impact}
-                    success={colors.success}
-                    danger={colors.danger}
-                  />
-                ))}
-              </View>
-            )}
-
-            {/* AI message */}
-            {result.message ? (
-              <ThemedText style={[styles.message, { color: colors.textSecondary }]}>
-                {result.message}
-              </ThemedText>
-            ) : null}
-          </>
+        {/* AI message */}
+        {result?.message && (
+          <View style={{ padding: Spacing.md, borderTopWidth: 1, borderTopColor: isDark ? '#2C2C3E' : 'rgba(150,150,150,0.1)' }}>
+            <ThemedText style={[{ fontSize: 14, lineHeight: 20 }, { color: isDark ? '#E2D8F0' : colors.textSecondary }]}>
+              {result.message}
+            </ThemedText>
+          </View>
         )}
 
         {!result && !loading && (
-          <ThemedText style={[styles.empty, { color: colors.textSecondary }]}>
-            {t('home.noDataForAnalysis')}
-          </ThemedText>
+          <View style={{ padding: Spacing.md }}>
+            <ThemedText style={[styles.empty, { color: colors.textSecondary }]}>
+              {t('home.noDataForAnalysis')}
+            </ThemedText>
+          </View>
         )}
-      </Card>
+      </View>
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 24,
-    padding: Spacing.lg,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: 'rgba(150,150,150,0.1)',
+    backgroundColor: '#FFFFFF',
+    overflow: 'hidden',
+  },
+  cardDark: {
+    borderColor: '#2C2C3E',
+    backgroundColor: '#1E1E2D',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
-    gap: 8,
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(150,150,150,0.1)',
+  },
+  headerDark: {
+    backgroundColor: '#1E1E2D',
+    borderBottomColor: '#2C2C3E',
+  },
+  aiDataGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    backgroundColor: '#FFFFFF',
+  },
+  aiDataGridDark: {
+    backgroundColor: '#151522',
+  },
+  aiDataCell: {
+    width: '50%',
+    padding: 12,
+  },
+  sideBorder: {
+    borderRightWidth: 1,
+    borderColor: '#2C2C3E',
+  },
+  bottomBorder: {
+    borderBottomWidth: 1,
+    borderColor: '#2C2C3E',
+  },
+  aiDataLabel: {
+    fontSize: 10,
+    color: '#888',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 6,
+    fontWeight: '600',
+  },
+  aiDataValueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  aiDataValue: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  aiDataUnit: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#888',
+  },
+  aiBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  aiBadgeText: {
+    fontSize: 9,
+    fontWeight: '700',
   },
   iconWrap: {
     width: 36,

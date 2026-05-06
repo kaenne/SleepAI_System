@@ -1,4 +1,3 @@
-import { BlurView } from 'expo-blur';
 import { router } from 'expo-router';
 import * as React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
@@ -21,45 +20,46 @@ interface Props {
 export function HomeActionBar({
   colorScheme,
   tintColor,
-  accentColor,
-  successColor,
   statsLabel,
   journalLabel,
   addLabel,
   onAddPress,
 }: Props) {
+  const isDark = colorScheme === 'dark';
   return (
     <Animated.View entering={FadeInUp.delay(50).springify()}>
-      <BlurView
-        intensity={colorScheme === 'dark' ? 40 : 80}
-        tint={colorScheme === 'dark' ? 'dark' : 'light'}
-        style={styles.row}
-      >
+      <View style={[styles.row, {
+        backgroundColor: isDark ? '#1E1E2D' : '#FFFFFF',
+        borderColor: isDark ? '#2C2C3E' : '#E5E7EB',
+      }]}>
+        {/* Статистика */}
         <Pressable onPress={() => router.navigate('/stats')} style={styles.btn}>
-          <View style={[styles.iconCircle, { backgroundColor: `${tintColor}20` }]}>
-            <IconSymbol name="chart.bar.fill" size={22} color={tintColor} />
+          <View style={[styles.iconCircle, { backgroundColor: isDark ? '#2D234A' : `${tintColor}15` }]}>
+            <IconSymbol name="chart.bar.fill" size={20} color={tintColor} />
           </View>
-          <ThemedText type="caption" style={styles.label}>{statsLabel}</ThemedText>
+          <ThemedText style={[styles.label, { color: isDark ? '#A78BFA' : tintColor }]}>{statsLabel}</ThemedText>
         </Pressable>
 
-        <View style={styles.divider} />
+        <View style={[styles.divider, { backgroundColor: isDark ? '#2C2C3E' : '#E5E7EB' }]} />
 
+        {/* Дневник */}
         <Pressable onPress={() => router.navigate('/')} style={styles.btn}>
-          <View style={[styles.iconCircle, { backgroundColor: `${accentColor}20` }]}>
-            <IconSymbol name="book.fill" size={22} color={accentColor} />
+          <View style={[styles.iconCircle, { backgroundColor: isDark ? '#1A2A4A' : '#EFF6FF' }]}>
+            <IconSymbol name="book.fill" size={20} color="#60A5FA" />
           </View>
-          <ThemedText type="caption" style={styles.label}>{journalLabel}</ThemedText>
+          <ThemedText style={[styles.label, { color: '#60A5FA' }]}>{journalLabel}</ThemedText>
         </Pressable>
 
-        <View style={styles.divider} />
+        <View style={[styles.divider, { backgroundColor: isDark ? '#2C2C3E' : '#E5E7EB' }]} />
 
+        {/* Добавить — solid green */}
         <Pressable onPress={onAddPress} style={styles.btn}>
-          <View style={[styles.iconCircle, { backgroundColor: `${successColor}20` }]}>
-            <IconSymbol name="plus.circle.fill" size={22} color={successColor} />
+          <View style={[styles.iconCircle, { backgroundColor: '#22c55e' }]}>
+            <IconSymbol name="plus" size={20} color="#0a1e0a" />
           </View>
-          <ThemedText type="caption" style={styles.label}>{addLabel}</ThemedText>
+          <ThemedText style={[styles.label, { color: '#22c55e' }]}>{addLabel}</ThemedText>
         </Pressable>
-      </BlurView>
+      </View>
     </Animated.View>
   );
 }
@@ -67,29 +67,22 @@ export function HomeActionBar({
 const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
-    borderRadius: 24,
+    borderRadius: 20,
     paddingVertical: 16,
     paddingHorizontal: 8,
     justifyContent: 'space-evenly',
     alignItems: 'center',
-    overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(150,150,150,0.1)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.1,
-    shadowRadius: 16,
-    elevation: 5,
   },
   btn: { alignItems: 'center', justifyContent: 'center', flex: 1 },
   iconCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 46,
+    height: 46,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 8,
   },
-  label: { fontWeight: '600' },
-  divider: { width: 1, height: '60%', backgroundColor: 'rgba(150,150,150,0.2)' },
+  label: { fontSize: 12, fontWeight: '600' },
+  divider: { width: 1, height: 40 },
 });
