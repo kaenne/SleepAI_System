@@ -1,18 +1,48 @@
-import { BlurView } from 'expo-blur';
 import { Tabs } from 'expo-router';
 import React from 'react';
-import { Alert, BackHandler, Platform, StyleSheet } from 'react-native';
+import { Alert, BackHandler, Platform, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { HapticTab } from '@/components/haptic-tab';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
+import { ThemedText } from '@/components/themed-text';
+import { Ico, type IcoName } from '@/components/ui/ico';
+import { BorderRadius, Brand, Type } from '@/constants/theme';
 import { useTranslation } from '@/contexts/i18n-context';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+
+/**
+ * Bottom tab bar — flat surface, no blur. Active tab is rendered as an
+ * accent-soft pill behind the icon (per spec). Labels sit below in mono caps.
+ */
+function TabIconPill({ icon, focused, label }: { icon: IcoName; focused: boolean; label: string }) {
+  const Icon = Ico[icon];
+  const tint = focused ? Brand.accent : Brand.textMuted;
+
+  return (
+    <View style={styles.tabSlot}>
+      <View
+        style={[
+          styles.pill,
+          focused
+            ? { backgroundColor: Brand.accentSoft, borderColor: Brand.accentBorder }
+            : { backgroundColor: 'transparent', borderColor: 'transparent' },
+        ]}
+      >
+        <Icon size={20} color={tint} />
+      </View>
+      <ThemedText
+        numberOfLines={1}
+        style={[
+          styles.label,
+          { color: tint },
+        ]}
+      >
+        {label}
+      </ThemedText>
+    </View>
+  );
+}
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme() ?? 'light';
-  const colors = Colors[colorScheme];
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
 
@@ -29,58 +59,39 @@ export default function TabLayout() {
         ],
         { cancelable: true }
       );
-      return true; // prevent default back action
+      return true;
     });
     return () => handler.remove();
   }, [t]);
 
-  const tabBarHeight = (Platform.OS === 'ios' ? 88 : 68) + insets.bottom;
+  const tabBarHeight = 64 + insets.bottom;
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: colors.tint,
-        tabBarInactiveTintColor: colors.icon,
         headerShown: false,
         tabBarShowLabel: false,
         tabBarButton: HapticTab,
-        tabBarBackground: () =>
-          Platform.OS !== 'android' ? (
-            <BlurView
-              tint={colorScheme === 'dark' ? 'dark' : 'light'}
-              intensity={85}
-              style={[StyleSheet.absoluteFill, styles.tabBarBlur]}
-            />
-          ) : undefined,
         tabBarStyle: {
-          backgroundColor: Platform.OS === 'android'
-            ? colors.cardBackground
-            : 'transparent',
-          borderTopWidth: 0,
-          borderTopColor: 'transparent',
+          backgroundColor: Brand.background,
+          borderTopWidth: 1,
+          borderTopColor: Brand.borderSoft,
           height: tabBarHeight,
-          paddingTop: 10,
-          paddingBottom: insets.bottom > 0 ? insets.bottom : 10,
-          // subtle top border via shadow
-          shadowColor: colorScheme === 'dark' ? '#000' : '#6366F1',
-          shadowOffset: { width: 0, height: -2 },
-          shadowOpacity: colorScheme === 'dark' ? 0.4 : 0.08,
-          shadowRadius: 12,
-          elevation: 16,
+          paddingTop: 8,
+          paddingBottom: insets.bottom > 0 ? insets.bottom : 8,
+          elevation: 0,
         },
-        tabBarIconStyle: {
-          justifyContent: 'center',
-          alignItems: 'center',
-          alignSelf: 'center',
-          marginTop: Platform.OS === 'ios' ? (insets.bottom > 0 ? 10 : 0) : 0,
+        tabBarItemStyle: {
+          paddingTop: 4,
         },
-      }}>
+      }}
+    >
       <Tabs.Screen
         name="index"
         options={{
           title: t('tabs.diary'),
-          tabBarIcon: ({ color, focused }) => (
-            <IconSymbol size={focused ? 32 : 28} name="house.fill" color={color} />
+          tabBarIcon: ({ focused }) => (
+            <TabIconPill icon="Book" focused={focused} label={t('tabs.diary')} />
           ),
         }}
       />
@@ -88,8 +99,8 @@ export default function TabLayout() {
         name="stats"
         options={{
           title: t('tabs.stats'),
-          tabBarIcon: ({ color, focused }) => (
-            <IconSymbol size={focused ? 32 : 28} name="chart.bar.fill" color={color} />
+          tabBarIcon: ({ focused }) => (
+            <TabIconPill icon="ChartBar" focused={focused} label={t('tabs.stats')} />
           ),
         }}
       />
@@ -97,8 +108,8 @@ export default function TabLayout() {
         name="chat"
         options={{
           title: t('tabs.aiTrainer'),
-          tabBarIcon: ({ color, focused }) => (
-            <IconSymbol size={focused ? 32 : 28} name="bubble.left.and.bubble.right.fill" color={color} />
+          tabBarIcon: ({ focused }) => (
+            <TabIconPill icon="Chat" focused={focused} label={t('tabs.aiTrainer')} />
           ),
         }}
       />
@@ -106,8 +117,8 @@ export default function TabLayout() {
         name="settings"
         options={{
           title: t('tabs.settings'),
-          tabBarIcon: ({ color, focused }) => (
-            <IconSymbol size={focused ? 32 : 28} name="gearshape.fill" color={color} />
+          tabBarIcon: ({ focused }) => (
+            <TabIconPill icon="Settings" focused={focused} label={t('tabs.settings')} />
           ),
         }}
       />
@@ -115,8 +126,8 @@ export default function TabLayout() {
         name="profile"
         options={{
           title: t('tabs.profile'),
-          tabBarIcon: ({ color, focused }) => (
-            <IconSymbol size={focused ? 32 : 28} name="person.crop.circle.fill" color={color} />
+          tabBarIcon: ({ focused }) => (
+            <TabIconPill icon="User" focused={focused} label={t('tabs.profile')} />
           ),
         }}
       />
@@ -125,9 +136,23 @@ export default function TabLayout() {
 }
 
 const styles = StyleSheet.create({
-  tabBarBlur: {
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    overflow: 'hidden',
+  tabSlot: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+  },
+  pill: {
+    width: 56,
+    height: 30,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  label: {
+    ...Type.caption,
+    fontSize: 11,
+    fontWeight: '500',
   },
 });

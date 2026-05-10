@@ -100,8 +100,7 @@ export function AiPredictionCard({ entry }: Props) {
       })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [entry.id]);
+  }, [entry.id, entry.sleepHours, entry.stressLevel, entry.createdAt, qualityWidth]);
 
   if (error) return null;
 

@@ -417,9 +417,10 @@ def chat(request: Request, chat_request: ChatRequest):
     if not msg:
         return {"reply": "Write your question and I'll help! 🌙"}
 
+    # The mobile client renders its own data box from journal/HRV state when
+    # user_context is present, so the reply itself stays clean — no language-
+    # specific prefix is prepended any more.
     context_prefix = ""
-    if chat_request.user_context:
-        context_prefix = f"📊 *Based on your data: {chat_request.user_context}*\n\n"
 
     # 1. Try LLM first — gives the best, contextual answer.
     llm_text = _llm_reply(msg, chat_request.user_context, chat_request.history)

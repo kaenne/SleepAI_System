@@ -1,53 +1,43 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { LinearGradient } from 'expo-linear-gradient';
 import * as React from 'react';
 import {
+  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   TextInput,
   View,
   useWindowDimensions,
-  KeyboardAvoidingView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, {
-  FadeInDown,
-  FadeInUp,
+  Easing,
+  ZoomIn,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
   withTiming,
-  Easing,
-  ZoomIn,
 } from 'react-native-reanimated';
 
 import { ThemedText } from '@/components/themed-text';
+import { Btn } from '@/components/ui/btn';
 import { Card } from '@/components/ui/card';
-import { IconSymbol } from '@/components/ui/icon-symbol';
+import { Ico, type IcoName } from '@/components/ui/ico';
+import { SectionHeader } from '@/components/ui/section-header';
 import { StorageKeys } from '@/constants/storage';
-import { Colors, Spacing } from '@/constants/theme';
+import { BorderRadius, Brand, Spacing, Type, tonal, tonalBorder } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
-import { LANG_OPTIONS, useTranslation, type Language } from '@/contexts/i18n-context';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { LANG_OPTIONS, type Language, useTranslation } from '@/contexts/i18n-context';
 import { useSleepJournal } from '@/hooks/use-sleep-journal';
 import { useUserProfile } from '@/hooks/use-user-profile';
 import { api } from '@/services/api';
 
 const DISPLAY_NAME_KEY = StorageKeys.DISPLAY_NAME;
 
-// Animated progress bar for sleep goal
-function GoalProgressBar({
-  progress: targetPct,
-  color,
-  trackColor,
-}: {
-  progress: number;
-  color: string;
-  trackColor: string;
-}) {
+// ── Goal progress bar ────────────────────────────────────────────────────────
+function GoalProgressBar({ progress: targetPct, color }: { progress: number; color: string }) {
   const widthPct = useSharedValue(0);
 
   React.useEffect(() => {
@@ -55,56 +45,49 @@ function GoalProgressBar({
       duration: 800,
       easing: Easing.out(Easing.cubic),
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [targetPct]);
+  }, [targetPct, widthPct]);
 
-  const barStyle = useAnimatedStyle(() => ({
-    width: `${widthPct.value}%` as any,
-  }));
+  const barStyle = useAnimatedStyle(() => ({ width: `${widthPct.value}%` as any }));
 
   return (
-    <View style={[styles.goalTrack, { backgroundColor: trackColor }]}>
+    <View style={styles.goalTrack}>
       <Animated.View style={[styles.goalBar, { backgroundColor: color }, barStyle]} />
     </View>
   );
 }
 
-// Achievement badge with pop-in animation when unlocked
+// ── Achievement badge ────────────────────────────────────────────────────────
 function AchievementBadge({
   icon,
   label,
   unlocked,
-  colors,
   boxSize,
 }: {
-  icon: string;
+  icon: IcoName;
   label: string;
   unlocked: boolean;
-  colors: typeof Colors.light;
   boxSize: number;
 }) {
+  const Icon = Ico[icon];
   return (
     <View style={[styles.achievement, { width: boxSize }]}>
       <Animated.View
         entering={unlocked ? ZoomIn.springify().damping(12) : undefined}
         style={[
           styles.achievementIcon,
-          {
-            backgroundColor: unlocked ? colors.tint + '20' : colors.cardBorder,
-            borderWidth: 1.5,
-            borderColor: unlocked ? colors.tint + '40' : 'transparent',
-          },
+          unlocked
+            ? { backgroundColor: tonal(Brand.accent), borderColor: tonalBorder(Brand.accent) }
+            : { backgroundColor: Brand.surfaceElevated, borderColor: Brand.border },
         ]}
       >
-        <IconSymbol
-          name={icon as any}
-          size={22}
-          color={unlocked ? colors.tint : colors.muted}
-        />
+        <Icon size={20} color={unlocked ? Brand.accent : Brand.textMuted} />
       </Animated.View>
       <ThemedText
         numberOfLines={2}
-        style={[styles.achievementLabel, { color: unlocked ? colors.text : colors.muted }]}
+        style={[
+          styles.achievementLabel,
+          { color: unlocked ? Brand.textPrimary : Brand.textMuted },
+        ]}
       >
         {label}
       </ThemedText>
@@ -112,38 +95,48 @@ function AchievementBadge({
   );
 }
 
+// ── Stat box (4-up grid) ─────────────────────────────────────────────────────
 type StatBoxProps = {
-  icon: string;
+  icon: IcoName;
   iconColor: string;
   label: string;
   value: string;
   subValue?: string;
-  colors: typeof Colors.light;
 };
 
-function StatBox({ icon, iconColor, label, value, subValue, colors }: StatBoxProps) {
+function StatBox({ icon, iconColor, label, value, subValue }: StatBoxProps) {
+  const Icon = Ico[icon];
   const scale = useSharedValue(1);
   const pressStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
 
   return (
     <Pressable
-      onPressIn={() => { scale.value = withSpring(0.96); }}
+      onPressIn={() => { scale.value = withSpring(0.97); }}
       onPressOut={() => { scale.value = withSpring(1); }}
       style={styles.statBoxPressable}
     >
-      <Animated.View style={[styles.statBox, { backgroundColor: iconColor + '12' }, pressStyle]}>
-        <View style={[styles.statBoxIcon, { backgroundColor: iconColor + '22' }]}>
-          <IconSymbol name={icon as any} size={20} color={iconColor} />
+      <Animated.View
+        style={[
+          styles.statBox,
+          {
+            backgroundColor: Brand.surfaceElevated,
+            borderColor: Brand.border,
+          },
+          pressStyle,
+        ]}
+      >
+        <View style={[styles.statBoxIcon, { backgroundColor: tonal(iconColor), borderColor: tonalBorder(iconColor) }]}>
+          <Icon size={18} color={iconColor} />
         </View>
-        <ThemedText style={[styles.statBoxValue, { color: colors.text }]} numberOfLines={1}>
+        <ThemedText style={styles.statBoxValue} numberOfLines={1}>
           {value}
         </ThemedText>
-        {subValue && (
+        {subValue ? (
           <ThemedText style={[styles.statBoxSub, { color: iconColor }]} numberOfLines={1}>
             {subValue}
           </ThemedText>
-        )}
-        <ThemedText style={[styles.statBoxLabel, { color: colors.textSecondary }]} numberOfLines={2}>
+        ) : null}
+        <ThemedText style={styles.statBoxLabel} numberOfLines={2}>
           {label}
         </ThemedText>
       </Animated.View>
@@ -151,17 +144,15 @@ function StatBox({ icon, iconColor, label, value, subValue, colors }: StatBoxPro
   );
 }
 
+// ── Screen ───────────────────────────────────────────────────────────────────
 export default function ProfileScreen() {
-  const colorScheme = useColorScheme() ?? 'light';
-  const colors = Colors[colorScheme];
   const { width: screenWidth } = useWindowDimensions();
   const { user, isAuthenticated } = useAuth();
   const { entries, stats } = useSleepJournal();
   const { profile, saveProfile } = useUserProfile();
   const { t, language, setLanguage } = useTranslation();
 
-  // Achievement box: 3 per row, account for padding + gaps
-  const achievementBoxSize = Math.floor((screenWidth - Spacing.md * 2 - Spacing.lg * 2 - 12 * 2) / 3);
+  const achievementBoxSize = Math.floor((screenWidth - Spacing.md * 2 - Spacing.md * 2 - 12 * 2) / 3);
 
   const [editingAiProfile, setEditingAiProfile] = React.useState(false);
   const [tempAge, setTempAge] = React.useState('');
@@ -185,7 +176,7 @@ export default function ProfileScreen() {
   const [tempName, setTempName] = React.useState('');
 
   React.useEffect(() => {
-    AsyncStorage.getItem(DISPLAY_NAME_KEY).then(val => { if (val) setDisplayName(val); });
+    AsyncStorage.getItem(DISPLAY_NAME_KEY).then((val) => { if (val) setDisplayName(val); });
   }, []);
 
   const effectiveName = isAuthenticated && user?.name
@@ -212,19 +203,19 @@ export default function ProfileScreen() {
       const d = new Date(today);
       d.setDate(d.getDate() - i);
       const dateStr = d.toISOString().slice(0, 10);
-      if (entries.some(e => e.createdAt.startsWith(dateStr))) count++;
+      if (entries.some((e) => e.createdAt.startsWith(dateStr))) count++;
       else if (i > 0) break;
     }
     return count;
   }, [entries]);
 
   const bestSleepNight = React.useMemo(
-    () => (entries.length === 0 ? 0 : Math.max(...entries.map(e => e.sleepHours))),
+    () => (entries.length === 0 ? 0 : Math.max(...entries.map((e) => e.sleepHours))),
     [entries],
   );
 
   const avgStress = React.useMemo(() => {
-    if (!stats.avgStressLevel) return t('common.na');
+    if (!stats.avgStressLevel) return t('common.noData');
     const l = stats.avgStressLevel;
     return l <= 3 ? t('profile.stress_low') : l <= 6 ? t('profile.stress_medium') : t('profile.stress_high');
   }, [stats.avgStressLevel, t]);
@@ -239,12 +230,13 @@ export default function ProfileScreen() {
     setEditingName(false);
   };
 
-  const sleepLevel = React.useMemo(() => {
+  // Sleep level ladder — driven by entry count, used in the header pill.
+  const sleepLevel = React.useMemo<{ icon: IcoName; color: string; label: string }>(() => {
     const count = entries.length;
-    if (count >= 50) return { label: t('profile.level'), color: '#F59E0B', icon: 'star.fill' };
-    if (count >= 20) return { label: t('profile.level'), color: '#3B82F6', icon: 'chart.bar.fill' };
-    if (count >= 5)  return { label: t('profile.level'), color: '#10B981', icon: 'leaf.fill' };
-    return { label: t('profile.level'), color: '#8B5CF6', icon: 'moon.fill' };
+    if (count >= 50) return { icon: 'Star', color: Brand.warn, label: t('profile.level') };
+    if (count >= 20) return { icon: 'ChartBar', color: Brand.info, label: t('profile.level') };
+    if (count >= 5)  return { icon: 'Leaf', color: Brand.good, label: t('profile.level') };
+    return { icon: 'Moon', color: Brand.accent, label: t('profile.level') };
   }, [entries.length, t]);
 
   const goalPct = stats.avgSleepHours
@@ -252,429 +244,534 @@ export default function ProfileScreen() {
     : 0;
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Gradient header */}
-      <LinearGradient
-        colors={[colors.headerGradientStart, colors.headerGradientMid, colors.headerGradientEnd]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.header}
-      >
-        <SafeAreaView style={{ flex: 1 }}>
-          <Animated.View entering={FadeInDown.duration(400)} style={styles.headerContent}>
-            <View style={styles.avatarContainer}>
-              <View style={styles.avatarOuter}>
-                <View style={[styles.avatar, { backgroundColor: 'rgba(255,255,255,0.25)' }]}>
-                  <ThemedText style={styles.avatarText}>{initials}</ThemedText>
-                </View>
-              </View>
-              {streak > 0 && (
-                <View style={[styles.streakBadge, { backgroundColor: '#F59E0B' }]}>
-                  <ThemedText style={styles.streakBadgeText}>🔥{streak}</ThemedText>
-                </View>
-              )}
-            </View>
-
-            {editingName ? (
-              <View style={styles.nameEditRow}>
-                <TextInput
-                  value={tempName}
-                  onChangeText={setTempName}
-                  style={[styles.nameInput, { color: '#FFFFFF', borderColor: 'rgba(255,255,255,0.5)' }]}
-                  placeholder={t('profile.editNamePlaceholder')}
-                  placeholderTextColor="rgba(255,255,255,0.5)"
-                  maxLength={30}
-                  autoFocus
-                  returnKeyType="done"
-                  onSubmitEditing={handleSaveName}
-                />
-                <Pressable onPress={handleSaveName} style={styles.nameEditBtn}>
-                  <IconSymbol name="checkmark.circle.fill" size={28} color="#FFFFFF" />
-                </Pressable>
-              </View>
-            ) : (
-              <Pressable
-                style={styles.nameRow}
-                onPress={() => {
-                  if (!isAuthenticated) { setTempName(displayName); setEditingName(true); }
-                }}
-              >
-                <ThemedText style={styles.nameText} numberOfLines={1}>{effectiveName}</ThemedText>
-                {!isAuthenticated && (
-                  <IconSymbol name="pencil" size={16} color="rgba(255,255,255,0.7)" />
-                )}
-              </Pressable>
-            )}
-
-            <ThemedText style={styles.emailText} numberOfLines={1}>
-              {isAuthenticated && user?.email ? user.email : t('profile.localProfile')}
-            </ThemedText>
-
-            <View style={[styles.levelBadge, { backgroundColor: 'rgba(255,255,255,0.18)' }]}>
-              <IconSymbol name={sleepLevel.icon as any} size={14} color={sleepLevel.color} />
-              <ThemedText style={styles.levelText}>{sleepLevel.label}</ThemedText>
-            </View>
-          </Animated.View>
-        </SafeAreaView>
-      </LinearGradient>
+    <View style={styles.screen}>
+      <SafeAreaView edges={['top']} style={{ backgroundColor: Brand.background }}>
+        <View style={styles.header}>
+          <ThemedText style={styles.headerTitle}>{t('tabs.profile')}</ThemedText>
+        </View>
+      </SafeAreaView>
 
       <ScrollView
-        style={styles.scrollView}
+        style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Stats grid */}
-        <Animated.View entering={FadeInUp.delay(80).duration(400)}>
-          <Card variant="elevated">
-            <ThemedText type="subtitle" style={styles.cardTitle}>{t('profile.myStats')}</ThemedText>
-            <View style={styles.statsGrid}>
-              <StatBox
-                icon="moon.fill" iconColor={colors.tint}
-                label={t('profile.totalHours')}
-                value={`${totalSleepHours.toFixed(1)}h`}
-                subValue={t('home.days').replace('{{n}}', String(Math.round(totalSleepHours / 24)))}
-                colors={colors}
-              />
-              <StatBox
-                icon="book.fill" iconColor={colors.accent}
-                label={t('profile.entries')}
-                value={String(entries.length)}
-                colors={colors}
-              />
-              <StatBox
-                icon="flame.fill" iconColor="#F59E0B"
-                label={t('profile.streak')}
-                value={`${streak}d`}
-                subValue={streak > 0 ? '🔥' : undefined}
-                colors={colors}
-              />
-              <StatBox
-                icon="star.fill" iconColor={colors.success}
-                label={t('profile.bestNight')}
-                value={bestSleepNight > 0 ? `${bestSleepNight}h` : t('common.noData')}
-                colors={colors}
-              />
-            </View>
-          </Card>
-        </Animated.View>
-
-        {/* Sleep summary */}
-        <Animated.View entering={FadeInUp.delay(130).duration(400)}>
-          <Card variant="default">
-            <ThemedText type="subtitle" style={styles.cardTitle}>{t('profile.summary')}</ThemedText>
-            <View style={styles.summaryRow}>
-              <View style={styles.summaryItem}>
-                <ThemedText style={[styles.summaryLabel, { color: colors.textSecondary }]}>
-                  {t('profile.avgSleep')}
-                </ThemedText>
-                <ThemedText style={[styles.summaryValue, { color: colors.text }]} numberOfLines={1}>
-                  {stats.avgSleepHours ? `${stats.avgSleepHours}h` : t('common.noData')}
-                </ThemedText>
+        {/* ── Account hero ─────────────────────────────────────────── */}
+        <Card variant="bordered" animated={false}>
+          <View style={styles.heroRow}>
+            <View style={styles.avatarWrap}>
+              <View style={styles.avatar}>
+                <ThemedText style={styles.avatarText}>{initials}</ThemedText>
               </View>
-              <View style={[styles.summaryDivider, { backgroundColor: colors.cardBorder }]} />
-              <View style={styles.summaryItem}>
-                <ThemedText style={[styles.summaryLabel, { color: colors.textSecondary }]}>
-                  {t('profile.stressLabel')}
-                </ThemedText>
-                <ThemedText style={[styles.summaryValue, { color: colors.text }]} numberOfLines={1}>
-                  {avgStress}
-                </ThemedText>
-              </View>
-              <View style={[styles.summaryDivider, { backgroundColor: colors.cardBorder }]} />
-              <View style={styles.summaryItem}>
-                <ThemedText style={[styles.summaryLabel, { color: colors.textSecondary }]}>
-                  {t('profile.sleepGoal')}
-                </ThemedText>
-                <ThemedText style={[styles.summaryValue, { color: colors.success }]}>8h</ThemedText>
-              </View>
-            </View>
-
-            {stats.avgSleepHours && (
-              <View style={styles.goalSection}>
-                <View style={styles.goalRow}>
-                  <ThemedText style={[styles.goalLabel, { color: colors.textSecondary }]}>
-                    {t('profile.goalProgress')}
-                  </ThemedText>
-                  <ThemedText style={[styles.goalPct, { color: colors.tint }]}>{goalPct}%</ThemedText>
+              {streak > 0 ? (
+                <View style={styles.streakBadge}>
+                  <Ico.Flame size={11} color={Brand.flame} />
+                  <ThemedText style={styles.streakBadgeText}>{streak}</ThemedText>
                 </View>
-                <GoalProgressBar
-                  progress={goalPct}
-                  color={stats.avgSleepHours >= 7 ? colors.success : colors.warning}
-                  trackColor={colors.cardBorder}
-                />
-              </View>
-            )}
-          </Card>
-        </Animated.View>
+              ) : null}
+            </View>
 
-        {/* AI Profile */}
-        <Animated.View entering={FadeInUp.delay(160).duration(400)}>
-          <Card variant="default">
-            <View style={styles.aiProfileHeader}>
-              <ThemedText type="subtitle" style={[styles.cardTitle, { flex: 1, marginBottom: 0 }]}>
-                {t('profile.aiData')}
+            <View style={{ flex: 1, gap: 4 }}>
+              {editingName ? (
+                <View style={styles.nameEditRow}>
+                  <TextInput
+                    value={tempName}
+                    onChangeText={setTempName}
+                    style={styles.nameInput}
+                    placeholder={t('profile.editNamePlaceholder')}
+                    placeholderTextColor={Brand.textMuted}
+                    maxLength={30}
+                    autoFocus
+                    returnKeyType="done"
+                    onSubmitEditing={handleSaveName}
+                  />
+                  <Pressable onPress={handleSaveName} style={styles.nameEditBtn} hitSlop={6}>
+                    <Ico.Check size={20} color={Brand.accent} />
+                  </Pressable>
+                </View>
+              ) : (
+                <Pressable
+                  style={styles.nameRow}
+                  onPress={() => {
+                    if (!isAuthenticated) { setTempName(displayName); setEditingName(true); }
+                  }}
+                >
+                  <ThemedText style={styles.nameText} numberOfLines={1}>{effectiveName}</ThemedText>
+                  {!isAuthenticated ? <Ico.Pencil size={14} color={Brand.textMuted} /> : null}
+                </Pressable>
+              )}
+
+              <ThemedText style={styles.emailText} numberOfLines={1}>
+                {isAuthenticated && user?.email ? user.email : t('profile.localProfile')}
               </ThemedText>
-              <Pressable onPress={openAiEdit} style={[styles.editBtn, { backgroundColor: colors.tint + '18' }]}>
-                <IconSymbol name="pencil" size={14} color={colors.tint} />
-                <ThemedText style={[styles.editBtnText, { color: colors.tint }]}>{t('profile.aiDataEdit')}</ThemedText>
-              </Pressable>
-            </View>
-            <ThemedText style={[styles.aiProfileHint, { color: colors.textSecondary }]}>
-              {t('profile.aiDataHint')}
-            </ThemedText>
-            <View style={styles.aiProfileRow}>
-              <View style={styles.aiProfileItem}>
-                <ThemedText style={[styles.aiProfileLabel, { color: colors.textSecondary }]}>{t('profile.ageLabel')}</ThemedText>
-                <ThemedText style={[styles.aiProfileValue, { color: colors.text }]} numberOfLines={1}>
-                  {profile.age !== null ? `${profile.age} ${t('profile.years')}` : t('common.noData')}
-                </ThemedText>
-              </View>
-              <View style={[styles.summaryDivider, { backgroundColor: colors.cardBorder }]} />
-              <View style={styles.aiProfileItem}>
-                <ThemedText style={[styles.aiProfileLabel, { color: colors.textSecondary }]}>{t('profile.genderLabel')}</ThemedText>
-                <ThemedText style={[styles.aiProfileValue, { color: colors.text }]} numberOfLines={1}>
-                  {profile.gender === 1 ? t('profile.genderMale') : profile.gender === 0 ? t('profile.genderFemale') : t('common.noData')}
-                </ThemedText>
-              </View>
-              <View style={[styles.summaryDivider, { backgroundColor: colors.cardBorder }]} />
-              <View style={styles.aiProfileItem}>
-                <ThemedText style={[styles.aiProfileLabel, { color: colors.textSecondary }]}>{t('profile.bmiLabel')}</ThemedText>
-                <ThemedText style={[styles.aiProfileValue, { color: colors.text }]} numberOfLines={1}>
-                  {profile.bmiCategory === 0 ? t('profile.bmiNormal')
-                    : profile.bmiCategory === 1 ? t('profile.bmiOverweight')
-                    : profile.bmiCategory === 2 ? t('profile.bmiObese') : t('common.noData')}
-                </ThemedText>
-              </View>
-            </View>
-          </Card>
-        </Animated.View>
 
-        {/* Language selector — placed under AI Data per design spec */}
-        <Animated.View entering={FadeInUp.delay(170).duration(400)}>
-          <Card variant="default">
-            <ThemedText type="subtitle" style={[styles.cardTitle, styles.centeredText]}>
-              {t('common.languageTitle')}
-            </ThemedText>
-            <View style={styles.languageSelectorRow}>
-              {LANG_OPTIONS.map((opt) => {
-                const active = language === opt.value;
-                return (
-                  <Pressable
-                    key={opt.value}
-                    onPress={() => setLanguage(opt.value as Language)}
+              <View
+                style={[
+                  styles.levelPill,
+                  { backgroundColor: tonal(sleepLevel.color), borderColor: tonalBorder(sleepLevel.color) },
+                ]}
+              >
+                {(() => {
+                  const Icon = Ico[sleepLevel.icon];
+                  return <Icon size={12} color={sleepLevel.color} />;
+                })()}
+                <ThemedText style={[styles.levelText, { color: sleepLevel.color }]}>{sleepLevel.label}</ThemedText>
+              </View>
+            </View>
+          </View>
+        </Card>
+
+        {/* ── Stats grid ───────────────────────────────────────────── */}
+        <SectionHeader title={t('profile.myStats')} />
+        <View style={styles.statsGrid}>
+          <StatBox
+            icon="Moon"
+            iconColor={Brand.accent}
+            label={t('profile.totalHours')}
+            value={`${totalSleepHours.toFixed(1)}h`}
+            subValue={t('home.days').replace('{{n}}', String(Math.round(totalSleepHours / 24)))}
+          />
+          <StatBox
+            icon="Book"
+            iconColor={Brand.info}
+            label={t('profile.entries')}
+            value={String(entries.length)}
+          />
+          <StatBox
+            icon="Flame"
+            iconColor={Brand.flame}
+            label={t('profile.streak')}
+            value={`${streak}d`}
+          />
+          <StatBox
+            icon="Star"
+            iconColor={Brand.good}
+            label={t('profile.bestNight')}
+            value={bestSleepNight > 0 ? `${bestSleepNight}h` : t('common.noData')}
+          />
+        </View>
+
+        {/* ── Sleep summary ────────────────────────────────────────── */}
+        <SectionHeader title={t('profile.summary')} />
+        <Card variant="bordered" animated={false}>
+          <View style={styles.summaryRow}>
+            <View style={styles.summaryItem}>
+              <ThemedText style={styles.summaryLabel}>{t('profile.avgSleep')}</ThemedText>
+              <ThemedText style={styles.summaryValue} numberOfLines={1}>
+                {stats.avgSleepHours ? `${stats.avgSleepHours}h` : t('common.noData')}
+              </ThemedText>
+            </View>
+            <View style={styles.summaryDivider} />
+            <View style={styles.summaryItem}>
+              <ThemedText style={styles.summaryLabel}>{t('profile.stressLabel')}</ThemedText>
+              <ThemedText style={styles.summaryValue} numberOfLines={1}>{avgStress}</ThemedText>
+            </View>
+            <View style={styles.summaryDivider} />
+            <View style={styles.summaryItem}>
+              <ThemedText style={styles.summaryLabel}>{t('profile.sleepGoal')}</ThemedText>
+              <ThemedText style={[styles.summaryValue, { color: Brand.good }]}>8h</ThemedText>
+            </View>
+          </View>
+
+          {stats.avgSleepHours ? (
+            <View style={styles.goalSection}>
+              <View style={styles.goalRow}>
+                <ThemedText style={styles.goalLabel}>{t('profile.goalProgress')}</ThemedText>
+                <ThemedText style={styles.goalPct}>{goalPct}%</ThemedText>
+              </View>
+              <GoalProgressBar
+                progress={goalPct}
+                color={stats.avgSleepHours >= 7 ? Brand.good : Brand.warn}
+              />
+            </View>
+          ) : null}
+        </Card>
+
+        {/* ── AI Data ─────────────────────────────────────────────── */}
+        <SectionHeader title={t('profile.aiData')} />
+        <Card variant="bordered" animated={false}>
+          <View style={styles.aiHeader}>
+            <ThemedText style={styles.aiHint}>{t('profile.aiDataHint')}</ThemedText>
+            <Pressable
+              onPress={openAiEdit}
+              style={[styles.editBtn, { backgroundColor: tonal(Brand.accent), borderColor: tonalBorder(Brand.accent) }]}
+              hitSlop={6}
+            >
+              <Ico.Pencil size={12} color={Brand.accent} />
+              <ThemedText style={[styles.editBtnText, { color: Brand.accent }]}>{t('profile.aiDataEdit')}</ThemedText>
+            </Pressable>
+          </View>
+          <View style={styles.aiProfileRow}>
+            <View style={styles.aiProfileItem}>
+              <ThemedText style={styles.aiProfileLabel}>{t('profile.ageLabel')}</ThemedText>
+              <ThemedText style={styles.aiProfileValue} numberOfLines={1}>
+                {profile.age !== null ? `${profile.age} ${t('profile.years')}` : t('common.noData')}
+              </ThemedText>
+            </View>
+            <View style={styles.summaryDivider} />
+            <View style={styles.aiProfileItem}>
+              <ThemedText style={styles.aiProfileLabel}>{t('profile.genderLabel')}</ThemedText>
+              <ThemedText style={styles.aiProfileValue} numberOfLines={1}>
+                {profile.gender === 1 ? t('profile.genderMale') : profile.gender === 0 ? t('profile.genderFemale') : t('common.noData')}
+              </ThemedText>
+            </View>
+            <View style={styles.summaryDivider} />
+            <View style={styles.aiProfileItem}>
+              <ThemedText style={styles.aiProfileLabel}>{t('profile.bmiLabel')}</ThemedText>
+              <ThemedText style={styles.aiProfileValue} numberOfLines={1}>
+                {profile.bmiCategory === 0 ? t('profile.bmiNormal')
+                  : profile.bmiCategory === 1 ? t('profile.bmiOverweight')
+                  : profile.bmiCategory === 2 ? t('profile.bmiObese') : t('common.noData')}
+              </ThemedText>
+            </View>
+          </View>
+        </Card>
+
+        {/* ── Language selector ───────────────────────────────────── */}
+        <SectionHeader title={t('common.languageTitle')} />
+        <Card variant="bordered" animated={false}>
+          <View style={styles.languageRow}>
+            {LANG_OPTIONS.map((opt) => {
+              const active = language === opt.value;
+              return (
+                <Pressable
+                  key={opt.value}
+                  onPress={() => setLanguage(opt.value as Language)}
+                  style={[
+                    styles.languagePill,
+                    active
+                      ? { backgroundColor: Brand.accentSoft, borderColor: Brand.accentBorder }
+                      : { backgroundColor: Brand.surfaceElevated, borderColor: Brand.border },
+                  ]}
+                >
+                  <ThemedText
                     style={[
-                      styles.languagePill,
-                      {
-                        backgroundColor: active ? colors.tint + '22' : colors.inputBackground,
-                        borderColor: active ? colors.tint : colors.inputBorder,
-                      },
+                      styles.languagePillText,
+                      { color: active ? Brand.accent : Brand.textSecondary, fontWeight: active ? '700' : '500' },
                     ]}
                   >
-                    <ThemedText
-                      style={[
-                        styles.languagePillText,
-                        {
-                          color: active ? colors.tint : colors.muted,
-                          fontWeight: active ? '700' : '500',
-                        },
-                      ]}
-                    >
-                      {opt.value.toUpperCase()}
-                    </ThemedText>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </Card>
-        </Animated.View>
-
-        {/* AI Profile Edit Modal */}
-        <Modal
-          visible={editingAiProfile}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setEditingAiProfile(false)}
-        >
-          <KeyboardAvoidingView 
-            style={styles.modalOverlay}
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          >
-            <View style={[styles.modalCard, { backgroundColor: colors.cardBackground }]}>
-              <ThemedText type="subtitle" style={{ marginBottom: 4 }}>{t('profile.editAiTitle')}</ThemedText>
-              <ThemedText style={{ color: colors.textSecondary, fontSize: 13, marginBottom: Spacing.lg }}>
-                {t('profile.editAiSubtitle')}
-              </ThemedText>
-
-              <View style={styles.aiEditGroup}>
-                <ThemedText style={[styles.aiEditLabel, { color: colors.textSecondary }]}>{t('profile.editAgeLabel')}</ThemedText>
-                <View style={[styles.aiEditInput, { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder }]}>
-                  <TextInput
-                    style={{ color: colors.text, fontSize: 16, height: 48, paddingHorizontal: 12 }}
-                    value={tempAge}
-                    onChangeText={v => setTempAge(v.replace(/[^0-9]/g, ''))}
-                    placeholder={t('profile.editAgePlaceholder')}
-                    placeholderTextColor={colors.muted}
-                    keyboardType="numeric"
-                    maxLength={3}
-                  />
-                </View>
-              </View>
-
-              <View style={styles.aiEditGroup}>
-                <ThemedText style={[styles.aiEditLabel, { color: colors.textSecondary }]}>{t('profile.editGenderLabel')}</ThemedText>
-                <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
-                  {(['male', 'female'] as const).map((key, val) => (
-                    <Pressable key={key} onPress={() => setTempGender(tempGender === val ? null : val as 0 | 1)}
-                      style={[styles.chipBtn, {
-                        flex: 1,
-                        backgroundColor: tempGender === val ? colors.tint + '20' : colors.inputBackground,
-                        borderColor: tempGender === val ? colors.tint : colors.inputBorder,
-                      }]}>
-                      <ThemedText style={{ color: tempGender === val ? colors.tint : colors.muted, fontWeight: tempGender === val ? '700' : '400' }}>
-                        {key === 'male' ? t('profile.genderMale') : t('profile.genderFemale')}
-                      </ThemedText>
-                    </Pressable>
-                  ))}
-                </View>
-              </View>
-
-              <View style={styles.aiEditGroup}>
-                <ThemedText style={[styles.aiEditLabel, { color: colors.textSecondary }]}>{t('profile.editBmiLabel')}</ThemedText>
-                <View style={{ flexDirection: 'row', gap: Spacing.sm, flexWrap: 'nowrap' }}>
-                  {([t('profile.bmiNormal'), t('profile.bmiOverweight'), t('profile.bmiObese')] as const).map((label, i) => (
-                    <Pressable key={i} onPress={() => setTempBmi(tempBmi === i ? null : i as 0 | 1 | 2)}
-                      style={[styles.chipBtn, {
-                        backgroundColor: tempBmi === i ? colors.tint + '20' : colors.inputBackground,
-                        borderColor: tempBmi === i ? colors.tint : colors.inputBorder,
-                      }]}>
-                      <ThemedText style={{ color: tempBmi === i ? colors.tint : colors.muted, fontWeight: tempBmi === i ? '700' : '500', fontSize: 14 }}>
-                        {label}
-                      </ThemedText>
-                    </Pressable>
-                  ))}
-                </View>
-              </View>
-
-              <View style={styles.modalActions}>
-                <Pressable style={[styles.modalBtn, { backgroundColor: colors.cardBorder }]} onPress={() => setEditingAiProfile(false)}>
-                  <ThemedText style={{ color: colors.text, fontWeight: '600' }}>{t('common.cancel')}</ThemedText>
+                    {opt.value.toUpperCase()}
+                  </ThemedText>
                 </Pressable>
-                <Pressable style={[styles.modalBtn, { backgroundColor: colors.tint }]} onPress={saveAiProfile}>
-                  <ThemedText style={{ color: '#fff', fontWeight: '700' }}>{t('common.save')}</ThemedText>
-                </Pressable>
-              </View>
-            </View>
-          </KeyboardAvoidingView>
-        </Modal>
+              );
+            })}
+          </View>
+        </Card>
 
-        {/* Achievements */}
-        <Animated.View entering={FadeInUp.delay(180).duration(400)}>
-          <Card variant="outlined">
-            <ThemedText type="subtitle" style={styles.cardTitle}>{t('profile.achievements')}</ThemedText>
-            <View style={styles.achievementsGrid}>
-              {[
-                { icon: 'moon.stars.fill', label: t('profile.ach_first'),   unlocked: entries.length >= 1 },
-                { icon: 'flame.fill',      label: t('profile.ach_streak3'), unlocked: streak >= 3 },
-                { icon: 'star.fill',       label: t('profile.ach_10'),      unlocked: entries.length >= 10 },
-                { icon: 'trophy.fill',     label: t('profile.ach_streak7'), unlocked: streak >= 7 },
-                { icon: 'heart.fill',      label: t('profile.ach_8h'),      unlocked: bestSleepNight >= 8 },
-                { icon: 'chart.bar.fill',  label: t('profile.ach_20'),      unlocked: entries.length >= 20 },
-              ].map((a) => (
-                <AchievementBadge
-                  key={a.icon}
-                  icon={a.icon}
-                  label={a.label}
-                  unlocked={a.unlocked}
-                  colors={colors}
-                  boxSize={achievementBoxSize}
-                />
-              ))}
-            </View>
-          </Card>
-        </Animated.View>
+        {/* ── Achievements ────────────────────────────────────────── */}
+        <SectionHeader title={t('profile.achievements')} />
+        <Card variant="bordered" animated={false}>
+          <View style={styles.achievementsGrid}>
+            {([
+              { icon: 'Moon',     label: t('profile.ach_first'),   unlocked: entries.length >= 1 },
+              { icon: 'Flame',    label: t('profile.ach_streak3'), unlocked: streak >= 3 },
+              { icon: 'Star',     label: t('profile.ach_10'),      unlocked: entries.length >= 10 },
+              { icon: 'Trophy',   label: t('profile.ach_streak7'), unlocked: streak >= 7 },
+              { icon: 'Heart',    label: t('profile.ach_8h'),      unlocked: bestSleepNight >= 8 },
+              { icon: 'ChartBar', label: t('profile.ach_20'),      unlocked: entries.length >= 20 },
+            ] as const).map((a) => (
+              <AchievementBadge
+                key={a.icon}
+                icon={a.icon}
+                label={a.label}
+                unlocked={a.unlocked}
+                boxSize={achievementBoxSize}
+              />
+            ))}
+          </View>
+        </Card>
 
         <View style={{ height: 32 }} />
       </ScrollView>
+
+      {/* ── AI Profile Edit Modal ─────────────────────────────────── */}
+      <Modal
+        visible={editingAiProfile}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setEditingAiProfile(false)}
+      >
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <View style={styles.modalCard}>
+            <ThemedText style={styles.modalTitle}>{t('profile.editAiTitle')}</ThemedText>
+            <ThemedText style={styles.modalSub}>{t('profile.editAiSubtitle')}</ThemedText>
+
+            <View style={styles.aiEditGroup}>
+              <ThemedText style={styles.aiEditLabel}>{t('profile.editAgeLabel')}</ThemedText>
+              <View style={styles.aiEditInputWrap}>
+                <TextInput
+                  style={styles.aiEditInput}
+                  value={tempAge}
+                  onChangeText={(v) => setTempAge(v.replace(/[^0-9]/g, ''))}
+                  placeholder={t('profile.editAgePlaceholder')}
+                  placeholderTextColor={Brand.textMuted}
+                  keyboardType="numeric"
+                  maxLength={3}
+                />
+              </View>
+            </View>
+
+            <View style={styles.aiEditGroup}>
+              <ThemedText style={styles.aiEditLabel}>{t('profile.editGenderLabel')}</ThemedText>
+              <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
+                {(['male', 'female'] as const).map((key, val) => {
+                  const active = tempGender === val;
+                  return (
+                    <Pressable
+                      key={key}
+                      onPress={() => setTempGender(active ? null : (val as 0 | 1))}
+                      style={[
+                        styles.chipBtn,
+                        { flex: 1 },
+                        active
+                          ? { backgroundColor: Brand.accentSoft, borderColor: Brand.accentBorder }
+                          : { backgroundColor: Brand.surfaceElevated, borderColor: Brand.border },
+                      ]}
+                    >
+                      <ThemedText style={{ ...Type.bodyM, color: active ? Brand.accent : Brand.textSecondary, fontWeight: active ? '700' : '500' }}>
+                        {key === 'male' ? t('profile.genderMale') : t('profile.genderFemale')}
+                      </ThemedText>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+
+            <View style={styles.aiEditGroup}>
+              <ThemedText style={styles.aiEditLabel}>{t('profile.editBmiLabel')}</ThemedText>
+              <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
+                {([t('profile.bmiNormal'), t('profile.bmiOverweight'), t('profile.bmiObese')] as const).map((label, i) => {
+                  const active = tempBmi === i;
+                  return (
+                    <Pressable
+                      key={i}
+                      onPress={() => setTempBmi(active ? null : (i as 0 | 1 | 2))}
+                      style={[
+                        styles.chipBtn,
+                        { flex: 1 },
+                        active
+                          ? { backgroundColor: Brand.accentSoft, borderColor: Brand.accentBorder }
+                          : { backgroundColor: Brand.surfaceElevated, borderColor: Brand.border },
+                      ]}
+                    >
+                      <ThemedText style={{ ...Type.bodyS, color: active ? Brand.accent : Brand.textSecondary, fontWeight: active ? '700' : '500', fontSize: 13 }}>
+                        {label}
+                      </ThemedText>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+
+            <View style={styles.modalActions}>
+              <Btn label={t('common.cancel')} variant="secondary" onPress={() => setEditingAiProfile(false)} fullWidth />
+              <Btn label={t('common.save')} onPress={saveAiProfile} fullWidth />
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }
 
+// ── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  screen: { flex: 1, backgroundColor: Brand.background },
   header: {
-    paddingTop: 12,
-    paddingBottom: 28,
     paddingHorizontal: Spacing.lg,
+    paddingTop: 8,
+    paddingBottom: 12,
+    alignItems: 'center',
   },
-  headerContent: { paddingTop: 12, alignItems: 'center', gap: 8 },
-  avatarContainer: { position: 'relative', marginBottom: 4 },
-  avatarOuter: { padding: 4, borderRadius: 999, borderWidth: 2, borderColor: 'rgba(255,255,255,0.4)' },
-  avatar: { width: 80, height: 80, borderRadius: 40, alignItems: 'center', justifyContent: 'center' },
-  avatarText: { fontSize: 30, fontWeight: '700', color: '#FFFFFF' },
-  streakBadge: { position: 'absolute', bottom: -2, right: -2, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10 },
-  streakBadgeText: { fontSize: 11, fontWeight: '700', color: '#FFFFFF' },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6, maxWidth: '80%' },
-  nameText: { fontSize: 22, fontWeight: '700', color: '#FFFFFF' },
-  nameEditRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  nameInput: { fontSize: 18, fontWeight: '600', borderBottomWidth: 1.5, paddingVertical: 4, paddingHorizontal: 8, minWidth: 160 },
-  nameEditBtn: { padding: 4 },
-  emailText: { fontSize: 13, color: 'rgba(255,255,255,0.65)', maxWidth: '80%' },
-  levelBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20 },
-  levelText: { fontSize: 12, fontWeight: '600', color: '#FFFFFF' },
-  scrollView: { flex: 1 },
-  scrollContent: { padding: Spacing.md, gap: Spacing.md, paddingBottom: 32 },
-  cardTitle: { marginBottom: 14 },
-  centeredText: { textAlign: 'center' },
-  languageSelectorRow: {
-    flexDirection: 'row',
-    gap: Spacing.sm,
+  headerTitle: { ...Type.titleL, color: Brand.textPrimary },
+
+  scroll: { flex: 1 },
+  scrollContent: { paddingHorizontal: Spacing.md, paddingBottom: 32 },
+
+  // Hero
+  heroRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  avatarWrap: { position: 'relative' },
+  avatar: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: Brand.accent,
+    alignItems: 'center',
     justifyContent: 'center',
   },
+  avatarText: { ...Type.titleL, color: Brand.textInverse, fontSize: 22 },
+  streakBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 999,
+    backgroundColor: tonal(Brand.flame),
+    borderWidth: 1,
+    borderColor: tonalBorder(Brand.flame),
+  },
+  streakBadgeText: { ...Type.monoS, color: Brand.flame, fontSize: 10 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  nameText: { ...Type.titleM, color: Brand.textPrimary },
+  nameEditRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  nameInput: {
+    flex: 1,
+    color: Brand.textPrimary,
+    fontFamily: Type.titleS.fontFamily,
+    fontSize: 16,
+    fontWeight: '600',
+    borderBottomWidth: 1,
+    borderBottomColor: Brand.accent,
+    paddingVertical: 4,
+    paddingHorizontal: 4,
+  },
+  nameEditBtn: { padding: 4 },
+  emailText: { ...Type.bodyS, color: Brand.textSecondary, fontSize: 12 },
+  levelPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+    marginTop: 2,
+  },
+  levelText: { ...Type.monoS, fontSize: 11, letterSpacing: 0.4 },
+
+  // Stats grid (4-up)
+  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  statBoxPressable: { width: '48%' },
+  statBox: {
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 14,
+    alignItems: 'center',
+    gap: 4,
+  },
+  statBoxIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  statBoxValue: { ...Type.monoL, color: Brand.textPrimary, fontSize: 22 },
+  statBoxSub: { ...Type.monoS, fontSize: 11, marginTop: -2 },
+  statBoxLabel: { ...Type.bodyS, color: Brand.textSecondary, fontSize: 11, textAlign: 'center', marginTop: 2 },
+
+  // Summary card
+  summaryRow: { flexDirection: 'row', alignItems: 'center' },
+  summaryItem: { flex: 1, alignItems: 'center', gap: 6 },
+  summaryDivider: { width: 1, height: 36, backgroundColor: Brand.borderSoft },
+  summaryLabel: { ...Type.section, color: Brand.textMuted, fontSize: 10 },
+  summaryValue: { ...Type.monoM, color: Brand.textPrimary, fontSize: 16 },
+
+  goalSection: { marginTop: 16, gap: 8 },
+  goalRow: { flexDirection: 'row', justifyContent: 'space-between' },
+  goalLabel: { ...Type.bodyS, color: Brand.textSecondary, fontSize: 12 },
+  goalPct: { ...Type.monoS, color: Brand.accent, fontSize: 12, fontWeight: '700' },
+  goalTrack: { height: 6, borderRadius: 3, overflow: 'hidden', backgroundColor: Brand.borderSoft },
+  goalBar: { height: '100%', borderRadius: 3 },
+
+  // AI data card
+  aiHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 },
+  aiHint: { ...Type.bodyS, color: Brand.textSecondary, fontSize: 12, flex: 1 },
+  editBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  editBtnText: { ...Type.bodyS, fontSize: 11, fontWeight: '600' },
+
+  aiProfileRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  aiProfileItem: { flex: 1, alignItems: 'center', gap: 4, paddingVertical: 4 },
+  aiProfileLabel: { ...Type.section, color: Brand.textMuted, fontSize: 10 },
+  aiProfileValue: { ...Type.monoM, color: Brand.textPrimary, fontSize: 14 },
+
+  // Language selector
+  languageRow: { flexDirection: 'row', gap: 10 },
   languagePill: {
     flex: 1,
     paddingVertical: 12,
     borderRadius: 12,
-    borderWidth: 1.5,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: Spacing.hitArea,
+  },
+  languagePillText: { ...Type.monoS, fontSize: 13, letterSpacing: 0.8 },
+
+  // Achievements
+  achievementsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'flex-start' },
+  achievement: { alignItems: 'center', gap: 6 },
+  achievementIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 14,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  languagePillText: { fontSize: 14, letterSpacing: 1 },
-  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  statBoxPressable: { flex: 1, minWidth: '44%' },
-  statBox: { borderRadius: 14, padding: 14, alignItems: 'center', gap: 4 },
-  statBoxIcon: { width: 38, height: 38, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
-  statBoxValue: { fontSize: 22, fontWeight: '800' },
-  statBoxSub: { fontSize: 11, fontWeight: '600', marginTop: -2 },
-  statBoxLabel: { fontSize: 11, fontWeight: '500', textAlign: 'center', marginTop: 2 },
-  summaryRow: { flexDirection: 'row', alignItems: 'center' },
-  summaryItem: { flex: 1, alignItems: 'center', gap: 4 },
-  summaryDivider: { width: 1, height: 40 },
-  summaryLabel: { fontSize: 11, fontWeight: '500' },
-  summaryValue: { fontSize: 18, fontWeight: '700' },
-  goalSection: { marginTop: 16, gap: 8 },
-  goalRow: { flexDirection: 'row', justifyContent: 'space-between' },
-  goalLabel: { fontSize: 13, fontWeight: '500' },
-  goalPct: { fontSize: 13, fontWeight: '700' },
-  goalTrack: { height: 8, borderRadius: 4, overflow: 'hidden' },
-  goalBar: { height: '100%', borderRadius: 4 },
-  achievementsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'flex-start' },
-  achievement: { alignItems: 'center', gap: 6 },
-  achievementIcon: { width: 52, height: 52, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  achievementLabel: { fontSize: 10, fontWeight: '600', textAlign: 'center' },
-  aiProfileHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4, gap: 8 },
-  editBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10, flexShrink: 0 },
-  editBtnText: { fontSize: 12, fontWeight: '600' },
-  aiProfileHint: { fontSize: 12, marginBottom: 12 },
-  aiProfileRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  aiProfileItem: { flex: 1, alignItems: 'center', gap: 4, paddingVertical: 8 },
-  aiProfileLabel: { fontSize: 11, fontWeight: '500' },
-  aiProfileValue: { fontSize: 16, fontWeight: '700' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: Spacing.lg },
-  modalCard: { width: '100%', borderRadius: 20, padding: Spacing.lg, gap: 4 },
+  achievementLabel: { ...Type.bodyS, fontSize: 10, fontWeight: '500', textAlign: 'center' },
+
+  // Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Spacing.lg,
+  },
+  modalCard: {
+    width: '100%',
+    maxWidth: 380,
+    backgroundColor: Brand.surface,
+    borderRadius: BorderRadius.card,
+    padding: Spacing.lg,
+    borderWidth: 1,
+    borderColor: Brand.border,
+  },
+  modalTitle: { ...Type.titleM, color: Brand.textPrimary, marginBottom: 4 },
+  modalSub: { ...Type.bodyS, color: Brand.textSecondary, marginBottom: Spacing.md },
+
   aiEditGroup: { marginTop: Spacing.sm, gap: 8 },
-  aiEditLabel: { fontSize: 12, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.6 },
-  aiEditInput: { borderWidth: 1.5, borderRadius: 10, overflow: 'hidden' },
-  chipBtn: { alignItems: 'center', justifyContent: 'center', paddingVertical: 10, paddingHorizontal: 4, borderRadius: 10, borderWidth: 1.5, flex: 1 },
+  aiEditLabel: { ...Type.section, color: Brand.textMuted, fontSize: 10 },
+  aiEditInputWrap: {
+    backgroundColor: Brand.surfaceElevated,
+    borderColor: Brand.border,
+    borderWidth: 1,
+    borderRadius: BorderRadius.md,
+    paddingHorizontal: 12,
+  },
+  aiEditInput: {
+    color: Brand.textPrimary,
+    fontFamily: Type.bodyM.fontFamily,
+    fontSize: 16,
+    height: 48,
+    padding: 0,
+  },
+  chipBtn: {
+    minHeight: Spacing.hitArea,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   modalActions: { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.md },
-  modalBtn: { flex: 1, paddingVertical: 13, borderRadius: 12, alignItems: 'center' },
 });

@@ -1,4 +1,15 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+  Inter_400Regular,
+  Inter_500Medium,
+  Inter_600SemiBold,
+  Inter_700Bold,
+} from '@expo-google-fonts/inter';
+import {
+  JetBrainsMono_400Regular,
+  JetBrainsMono_500Medium,
+  JetBrainsMono_600SemiBold,
+} from '@expo-google-fonts/jetbrains-mono';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import { Stack, router } from 'expo-router';
@@ -45,7 +56,18 @@ function AppNavigator() {
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
-    // Add custom fonts here if needed
+    // Body / UI typography
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_600SemiBold,
+    Inter_700Bold,
+    // Numeric / mono typography (numbers, time, version, section headers)
+    JetBrainsMono_400Regular,
+    JetBrainsMono_500Medium,
+    JetBrainsMono_600SemiBold,
+    // Aliases referenced from constants/theme.ts so existing usages keep working
+    Inter: Inter_400Regular,
+    JetBrainsMono: JetBrainsMono_500Medium,
   });
 
   React.useEffect(() => {

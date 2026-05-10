@@ -1,39 +1,62 @@
+import { router } from 'expo-router';
 import * as React from 'react';
 import {
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   View,
 } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { SleepTimer } from '@/components/sleep-timer';
-import { StressMonitor } from '@/components/stress-monitor';
 import { AiTipCard } from '@/components/home/ai-info-cards';
 import { HomeActionBar } from '@/components/home/home-action-bar';
 import { QuickEntryForm } from '@/components/home/quick-entry-form';
 import { QuickStatsRow } from '@/components/home/quick-stats-row';
 import { ThemedText } from '@/components/themed-text';
-import { Colors, Spacing } from '@/constants/theme';
+import { Btn } from '@/components/ui/btn';
+import { Card } from '@/components/ui/card';
+import { Ico } from '@/components/ui/ico';
+import { Brand, Spacing, Type, tonal, tonalBorder } from '@/constants/theme';
 import { useUser } from '@/contexts/auth-context';
 import { useTranslation } from '@/contexts/i18n-context';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useBackendStatus } from '@/hooks/use-backend-status';
 import { useSleepJournal } from '@/hooks/use-sleep-journal';
+import { useStressMonitor } from '@/hooks/use-stress-monitor';
 
 type HomeTab = 0 | 1 | 2;
 
 export default function HomeScreen() {
-  const colorScheme = useColorScheme() ?? 'light';
-  const isDark = colorScheme === 'dark';
-  const colors = Colors[colorScheme];
   const user = useUser();
   const { entries } = useSleepJournal();
   const { t, tArray } = useTranslation();
+  const { status: backendStatus } = useBackendStatus();
+  const { latestStress, recordStress, measureHrv, isLoading: hrvLoading } = useStressMonitor();
   const insets = useSafeAreaInsets();
 
   const [activeTab, setActiveTab] = React.useState<HomeTab>(0);
+  const [isMeasuringHrv, setIsMeasuringHrv] = React.useState(false);
+
+  // Online status colour resolves once — three discrete states.
+  const onlineState = backendStatus.isChecking
+    ? { color: Brand.warn, label: t('home.checking') }
+    : backendStatus.isOnline
+      ? { color: Brand.good, label: t('home.online') }
+      : { color: Brand.textMuted, label: t('home.offline') };
+
+  const handleMeasureHrv = React.useCallback(async () => {
+    if (isMeasuringHrv || hrvLoading) return;
+    setIsMeasuringHrv(true);
+    try {
+      const hrv = await measureHrv();
+      await recordStress(hrv);
+    } catch {
+      // UI keeps the previous reading; nothing actionable to show.
+    } finally {
+      setIsMeasuringHrv(false);
+    }
+  }, [isMeasuringHrv, hrvLoading, measureHrv, recordStress]);
 
   const todayTip = React.useMemo(() => {
     const tips = tArray('home.tips');
@@ -62,70 +85,72 @@ export default function HomeScreen() {
 
   const userName = user?.name?.split(' ')[0] || t('home.greetingFallback');
 
-  // Header subtitle text differs per tab
   const subtitles = [t('home.subtitle'), t('timer.subtitleSleeping'), t('home.aiAnalysisSubtitle')];
-
   const TAB_LABELS = [t('home.tabRecord'), t('home.tabSleeping'), t('home.tabAnalysis')];
 
   return (
-    <View style={[styles.root, { backgroundColor: isDark ? '#151522' : colors.background }]}>
-      {/* ─── Header ─── */}
-      <SafeAreaView style={{ backgroundColor: isDark ? '#151522' : colors.background }}>
+    <View style={styles.root}>
+      {/* ── Header ───────────────────────────────────────────────────── */}
+      <SafeAreaView edges={['top']} style={{ backgroundColor: Brand.background }}>
         <View style={[styles.header, { paddingTop: Math.max(insets.top - 20, 8) }]}>
           <View style={{ flex: 1 }}>
             {activeTab === 2 ? (
-              <ThemedText style={styles.headerTitleBig}>{t('home.aiAnalysisHeader')}</ThemedText>
+              <ThemedText style={styles.headerTitle}>{t('home.aiAnalysisHeader')}</ThemedText>
             ) : (
-              <ThemedText style={styles.greeting}>
+              <ThemedText style={styles.headerTitle}>
                 {t('home.greeting').replace('{{name}}', userName)}
               </ThemedText>
             )}
-            <ThemedText style={[styles.subGreeting, { color: colors.muted }]}>
-              {subtitles[activeTab]}
-            </ThemedText>
+            <ThemedText style={styles.headerSub}>{subtitles[activeTab]}</ThemedText>
           </View>
-          <View style={[
-            styles.onlinePill,
-            {
-              backgroundColor: isDark ? '#0d2e1a' : '#d1fae5',
-              borderColor: isDark ? '#1a5c34' : '#6ee7b7',
-            },
-          ]}>
-            <View style={styles.onlineDot} />
-            <ThemedText style={[styles.onlineText, { color: isDark ? '#4ADE80' : '#059669' }]}>
-              {t('home.online')}
+
+          <View
+            style={[
+              styles.onlinePill,
+              {
+                backgroundColor: tonal(onlineState.color),
+                borderColor: tonalBorder(onlineState.color),
+              },
+            ]}
+          >
+            <View style={[styles.onlineDot, { backgroundColor: onlineState.color }]} />
+            <ThemedText style={[styles.onlineText, { color: onlineState.color }]}>
+              {onlineState.label}
             </ThemedText>
           </View>
         </View>
 
-        {/* ─── Segmented Switcher ─── */}
-        <View style={[styles.segmentedWrap, { backgroundColor: isDark ? '#1E1E2D' : '#F3F4F6', borderColor: isDark ? '#2C2C3E' : '#E5E7EB' }]}>
-          {TAB_LABELS.map((label, idx) => (
-            <Pressable
-              key={idx}
-              onPress={() => setActiveTab(idx as HomeTab)}
-              style={[
-                styles.segmentPill,
-                activeTab === idx && {
-                  backgroundColor: isDark ? '#2D234A' : `${colors.tint}18`,
-                },
-              ]}
-            >
-              <ThemedText
+        {/* ── Segmented switcher ─────────────────────────────────────── */}
+        <View style={styles.segmentedWrap}>
+          {TAB_LABELS.map((label, idx) => {
+            const active = activeTab === idx;
+            return (
+              <Pressable
+                key={idx}
+                onPress={() => setActiveTab(idx as HomeTab)}
                 style={[
-                  styles.segmentLabel,
-                  { color: activeTab === idx ? colors.tint : colors.muted },
-                  activeTab === idx && { fontWeight: '600' },
+                  styles.segmentPill,
+                  active
+                    ? { backgroundColor: Brand.accentSoft, borderColor: Brand.accentBorder, borderWidth: 1 }
+                    : { backgroundColor: 'transparent', borderColor: 'transparent', borderWidth: 1 },
                 ]}
               >
-                {label}
-              </ThemedText>
-            </Pressable>
-          ))}
+                <ThemedText
+                  style={[
+                    styles.segmentLabel,
+                    { color: active ? Brand.accent : Brand.textSecondary },
+                    active && { fontWeight: '600' },
+                  ]}
+                >
+                  {label}
+                </ThemedText>
+              </Pressable>
+            );
+          })}
         </View>
       </SafeAreaView>
 
-      {/* ─── Tab 0: Запись ─── */}
+      {/* ── Tab 0: Запись ────────────────────────────────────────────── */}
       {activeTab === 0 && (
         <ScrollView
           style={styles.scroll}
@@ -134,36 +159,36 @@ export default function HomeScreen() {
         >
           <Animated.View entering={FadeIn.duration(250)}>
             <HomeActionBar
-              colorScheme={colorScheme}
-              tintColor={colors.tint}
-              accentColor={colors.accent}
-              successColor={colors.success}
+              colorScheme="dark"
+              tintColor={Brand.accent}
+              accentColor={Brand.info}
+              successColor={Brand.good}
               statsLabel={t('home.statsTile')}
               journalLabel={t('home.journalTile')}
               addLabel={t('home.addTile')}
-              onAddPress={() => {}}
+              onAddPress={() => router.push('/modal')}
             />
 
             <QuickEntryForm onEntrySaved={() => {}} />
 
-            {/* "Прошлая ночь" empty card */}
-            <View style={[styles.lastNightCard, { backgroundColor: isDark ? '#1E1E2D' : '#FFFFFF', borderColor: isDark ? '#2C2C3E' : '#E5E7EB' }]}>
+            {/* Last-night recap card */}
+            <Card variant="bordered" animated={false} style={{ marginTop: Spacing.sm }}>
               <View style={styles.lastNightHeader}>
-                <ThemedText style={[styles.lastNightLabel, { color: colors.muted }]}>
-                  {t('home.lastNightTitle')}
-                </ThemedText>
-                <View style={[styles.lastNightDivider, { backgroundColor: isDark ? '#2C2C3E' : '#E5E7EB' }]} />
-                <ThemedText style={[styles.lastNightDash, { color: colors.muted }]}>—</ThemedText>
+                <ThemedText style={styles.lastNightLabel}>{t('home.lastNightTitle')}</ThemedText>
+                <View style={styles.lastNightRule} />
+                <ThemedText style={styles.lastNightDash}>—</ThemedText>
               </View>
-              <ThemedText style={[styles.lastNightBody, { color: colors.muted }]}>
-                {entries.length === 0 ? t('home.noEntries') : `${t('home.sleepToday')}: ${latestEntry?.sleepHours}h`}
+              <ThemedText style={styles.lastNightBody}>
+                {entries.length === 0
+                  ? t('home.noEntries')
+                  : `${t('home.sleepToday')}: ${latestEntry?.sleepHours}h`}
               </ThemedText>
-            </View>
+            </Card>
           </Animated.View>
         </ScrollView>
       )}
 
-      {/* ─── Tab 1: Сон идёт ─── */}
+      {/* ── Tab 1: Сон идёт ──────────────────────────────────────────── */}
       {activeTab === 1 && (
         <ScrollView
           style={styles.scroll}
@@ -176,7 +201,7 @@ export default function HomeScreen() {
         </ScrollView>
       )}
 
-      {/* ─── Tab 2: AI Анализ ─── */}
+      {/* ── Tab 2: AI Анализ ─────────────────────────────────────────── */}
       {activeTab === 2 && (
         <ScrollView
           style={styles.scroll}
@@ -184,41 +209,48 @@ export default function HomeScreen() {
           showsVerticalScrollIndicator={false}
         >
           <Animated.View entering={FadeIn.duration(250)} style={{ gap: Spacing.md }}>
-
-            {/* HRV Measure Card */}
-            <View style={[styles.hrvCard, { backgroundColor: isDark ? '#1E1E2D' : '#FFFFFF', borderColor: isDark ? '#2C2C3E' : '#E5E7EB' }]}>
+            {/* HRV measure card */}
+            <Card variant="bordered" animated={false}>
               <View style={styles.hrvCardTop}>
-                <View style={[styles.hrvIconWrap, { backgroundColor: isDark ? '#2D1A4A' : '#EDE9FE' }]}>
-                  <ThemedText style={{ fontSize: 22 }}>❤️</ThemedText>
+                <View
+                  style={[
+                    styles.iconChip,
+                    { backgroundColor: tonal(Brand.accent), borderColor: tonalBorder(Brand.accent) },
+                  ]}
+                >
+                  <Ico.Heart size={20} color={Brand.accent} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <ThemedText style={[styles.hrvCardTitle, { color: isDark ? '#E2D8F0' : '#1F2937' }]}>
-                    {t('stress.measureBtn')}
-                  </ThemedText>
-                  <ThemedText style={[styles.hrvCardSub, { color: isDark ? '#6B7280' : '#9CA3AF' }]}>
-                    {t('stress.measureSubtitle')}
-                  </ThemedText>
+                  <ThemedText style={styles.hrvCardTitle}>{t('stress.measureBtn')}</ThemedText>
+                  <ThemedText style={styles.hrvCardSub}>{t('stress.measureSubtitle')}</ThemedText>
                 </View>
               </View>
-              <View style={styles.hrvMetaRow}>
-                <View style={[styles.hrvMetaCell, { backgroundColor: isDark ? '#151522' : '#F3F4F6', borderColor: isDark ? '#2C2C3E' : '#E5E7EB' }]}>
-                  <ThemedText style={[styles.hrvMetaVal, { color: '#A78BFA' }]}>—</ThemedText>
-                  <ThemedText style={[styles.hrvMetaLabel, { color: isDark ? '#6B7280' : '#9CA3AF' }]}>HRV</ThemedText>
-                </View>
-                <View style={[styles.hrvMetaCell, { backgroundColor: isDark ? '#151522' : '#F3F4F6', borderColor: isDark ? '#2C2C3E' : '#E5E7EB' }]}>
-                  <ThemedText style={[styles.hrvMetaVal, { color: '#60A5FA' }]}>—</ThemedText>
-                  <ThemedText style={[styles.hrvMetaLabel, { color: isDark ? '#6B7280' : '#9CA3AF' }]}>bpm</ThemedText>
-                </View>
-                <Pressable
-                  style={({ pressed }) => [styles.hrvStartBtn, { opacity: pressed ? 0.85 : 1 }]}
-                >
-                  <ThemedText style={styles.hrvStartBtnText}>{t('stress.startMeasure')}</ThemedText>
-                </Pressable>
-              </View>
-            </View>
 
-            {/* Stress tips card */}
-            <StressMonitor />
+              <View style={styles.hrvMetaRow}>
+                <View style={styles.hrvMetaCell}>
+                  <ThemedText style={[styles.hrvMetaVal, { color: Brand.accent }]}>
+                    {latestStress?.hrvScore != null ? Math.round(latestStress.hrvScore) : t('common.noData')}
+                  </ThemedText>
+                  <ThemedText style={styles.hrvMetaLabel}>HRV</ThemedText>
+                </View>
+                <View style={styles.hrvMetaCell}>
+                  <ThemedText style={[styles.hrvMetaVal, { color: Brand.info, fontSize: 14 }]} numberOfLines={1}>
+                    {latestStress?.stressLevel && latestStress.stressLevel !== 'UNKNOWN'
+                      ? t(`stress.level_${latestStress.stressLevel.toLowerCase()}`)
+                      : t('common.noData')}
+                  </ThemedText>
+                  <ThemedText style={styles.hrvMetaLabel}>{t('stress.levelShort')}</ThemedText>
+                </View>
+                <View style={{ flex: 1.6 }}>
+                  <Btn
+                    label={isMeasuringHrv ? t('stress.measuring') : t('stress.startMeasure')}
+                    onPress={handleMeasureHrv}
+                    disabled={isMeasuringHrv}
+                    leading={<Ico.Pulse size={16} color={Brand.textInverse} />}
+                  />
+                </View>
+              </View>
+            </Card>
 
             {/* Hero metric cards */}
             <QuickStatsRow
@@ -228,7 +260,7 @@ export default function HomeScreen() {
               currentStreak={currentStreak}
             />
 
-            {/* AI Tip card */}
+            {/* AI tip */}
             <AiTipCard tip={todayTip} />
           </Animated.View>
         </ScrollView>
@@ -238,28 +270,20 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1 },
+  root: { flex: 1, backgroundColor: Brand.background },
+
+  // Header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: Spacing.lg,
     paddingBottom: Spacing.md,
+    gap: 12,
   },
-  greeting: {
-    fontSize: 22,
-    fontWeight: '700',
-    letterSpacing: -0.4,
-  },
-  headerTitleBig: {
-    fontSize: 22,
-    fontWeight: '700',
-    letterSpacing: -0.4,
-  },
-  subGreeting: {
-    fontSize: 13,
-    marginTop: 2,
-  },
+  headerTitle: { ...Type.titleL, color: Brand.textPrimary, letterSpacing: -0.3 },
+  headerSub: { ...Type.bodyS, color: Brand.textSecondary, marginTop: 2 },
+
   onlinePill: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -267,24 +291,20 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     borderRadius: 20,
     borderWidth: 1,
-    gap: 5,
+    gap: 6,
   },
-  onlineDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: '#4ADE80',
-  },
-  onlineText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
+  onlineDot: { width: 7, height: 7, borderRadius: 4 },
+  onlineText: { ...Type.monoS, fontSize: 11, letterSpacing: 0.4 },
+
+  // Segmented tabs
   segmentedWrap: {
     flexDirection: 'row',
     marginHorizontal: Spacing.lg,
     marginBottom: Spacing.md,
     borderRadius: 999,
+    backgroundColor: Brand.surface,
     borderWidth: 1,
+    borderColor: Brand.border,
     padding: 4,
   },
   segmentPill: {
@@ -293,105 +313,71 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     alignItems: 'center',
   },
-  segmentLabel: {
-    fontSize: 13,
-    fontWeight: '500',
-  },
+  segmentLabel: { ...Type.bodyS, fontSize: 13 },
+
+  // Scroll
   scroll: { flex: 1 },
   scrollContent: {
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.sm,
     gap: Spacing.md,
   },
-  lastNightCard: {
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: Spacing.md,
-    marginTop: Spacing.sm,
-  },
+
+  // Last-night card
   lastNightHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 8,
     gap: 8,
   },
-  lastNightLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  lastNightDivider: {
-    flex: 1,
-    height: 1,
-  },
-  lastNightDash: {
-    fontSize: 13,
-  },
-  lastNightBody: {
-    fontSize: 13.5,
-    lineHeight: 20,
-  },
-  hrvCard: {
-    borderRadius: 20,
-    borderWidth: 1,
-    padding: Spacing.lg,
-    gap: Spacing.sm,
-  },
+  lastNightLabel: { ...Type.section, color: Brand.textMuted },
+  lastNightRule: { flex: 1, height: 1, backgroundColor: Brand.borderSoft },
+  lastNightDash: { ...Type.monoS, color: Brand.textMuted },
+  lastNightBody: { ...Type.bodyS, color: Brand.textSecondary, lineHeight: 20 },
+
+  // HRV card
   hrvCardTop: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.sm,
+    gap: 12,
   },
-  hrvIconWrap: {
-    width: 46,
-    height: 46,
-    borderRadius: 14,
+  iconChip: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  hrvCardTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  hrvCardSub: {
-    fontSize: 12,
-    marginTop: 2,
-  },
+  hrvCardTitle: { ...Type.titleS, color: Brand.textPrimary, fontSize: 15 },
+  hrvCardSub: { ...Type.bodyS, color: Brand.textSecondary, marginTop: 2, fontSize: 12 },
   hrvMetaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.sm,
-    marginTop: 4,
+    gap: 8,
+    marginTop: 12,
   },
   hrvMetaCell: {
     flex: 1,
-    borderRadius: 12,
+    backgroundColor: Brand.surfaceElevated,
+    borderColor: Brand.border,
     borderWidth: 1,
+    borderRadius: 12,
     paddingVertical: 10,
+    paddingHorizontal: 8,
     alignItems: 'center',
+    minHeight: 56,
+    justifyContent: 'center',
   },
   hrvMetaVal: {
-    fontSize: 20,
+    ...Type.monoL,
+    fontSize: 18,
     fontWeight: '700',
-    fontVariant: ['tabular-nums'],
   },
   hrvMetaLabel: {
-    fontSize: 11,
-    fontWeight: '500',
-    marginTop: 2,
-  },
-  hrvStartBtn: {
-    flex: 1.5,
-    backgroundColor: '#A78BFA',
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  hrvStartBtnText: {
-    color: '#1a1228',
-    fontWeight: '700',
-    fontSize: 14,
+    ...Type.section,
+    color: Brand.textMuted,
+    fontSize: 10,
+    marginTop: 4,
   },
 });
-

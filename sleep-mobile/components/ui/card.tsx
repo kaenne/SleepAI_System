@@ -1,57 +1,95 @@
 import { StyleSheet, View, type ViewProps } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
-import { BorderRadius, Colors, Shadows, Spacing } from '@/constants/theme';
+import { BorderRadius, Brand, Colors, Shadows, Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
+/**
+ * SleepMind surface primitive. Use the new variants — `flat`, `bordered`, `glow` —
+ * for the redesigned screens. The legacy variants (`default`, `elevated`, `outlined`)
+ * stay for backward compatibility while screens migrate.
+ *
+ *  - `flat`     — surface fill, no border, no shadow. Default for grouped lists.
+ *  - `bordered` — surface fill + thin border. Use for outlined controls or to
+ *                 separate cards on the same surface.
+ *  - `glow`     — surface fill + accent shadow. Use sparingly for hero cards.
+ */
+export type CardVariant =
+  | 'flat'
+  | 'bordered'
+  | 'glow'
+  // legacy
+  | 'default'
+  | 'elevated'
+  | 'outlined';
+
 export type CardProps = ViewProps & {
-  variant?: 'default' | 'elevated' | 'outlined';
-  /** Animation delay in ms for staggered appearance */
+  variant?: CardVariant;
   animationDelay?: number;
-  /** Whether to animate on mount */
   animated?: boolean;
 };
 
 export function Card({
   style,
-  variant = 'default',
+  variant = 'flat',
   animationDelay = 0,
   animated = true,
   children,
   ...otherProps
 }: CardProps) {
-  const colorScheme = useColorScheme() ?? 'light';
-  const cardBg = Colors[colorScheme].cardBackground;
-  const cardBorder = Colors[colorScheme].cardBorder;
+  const colorScheme = useColorScheme() ?? 'dark';
+  const isDark = colorScheme === 'dark';
+  const tokens = Colors[colorScheme];
   const shadow = Shadows[colorScheme].card;
 
-  const variantStyles = {
-    default: {
-      backgroundColor: cardBg,
-      borderWidth: 1,
-      borderColor: cardBorder,
-      ...shadow,
-    },
-    elevated: {
-      backgroundColor: cardBg,
-      borderWidth: colorScheme === 'dark' ? 1 : 0,
-      borderColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.06)' : 'transparent',
-      ...shadow,
-      shadowOpacity: shadow.shadowOpacity * 2,
-      shadowRadius: shadow.shadowRadius * 1.5,
-    },
-    outlined: {
-      backgroundColor: 'transparent',
-      borderWidth: 1.5,
-      borderColor: cardBorder,
-    },
-  };
+  const variantStyle = (() => {
+    switch (variant) {
+      case 'flat':
+        return {
+          backgroundColor: isDark ? Brand.surface : tokens.cardBackground,
+          borderWidth: 0,
+        };
+      case 'bordered':
+        return {
+          backgroundColor: isDark ? Brand.surface : tokens.cardBackground,
+          borderWidth: 1,
+          borderColor: isDark ? Brand.border : tokens.cardBorder,
+        };
+      case 'glow':
+        return {
+          backgroundColor: isDark ? Brand.surface : tokens.cardBackground,
+          borderWidth: 1,
+          borderColor: Brand.accentBorder,
+          ...(isDark ? Shadows.dark.glow : shadow),
+        };
+
+      // ── Legacy variants ────────────────────────────────────────────────────
+      case 'elevated':
+        return {
+          backgroundColor: tokens.cardBackground,
+          borderWidth: isDark ? 1 : 0,
+          borderColor: isDark ? Brand.border : 'transparent',
+          ...shadow,
+        };
+      case 'outlined':
+        return {
+          backgroundColor: 'transparent',
+          borderWidth: 1.5,
+          borderColor: tokens.cardBorder,
+        };
+      case 'default':
+      default:
+        return {
+          backgroundColor: tokens.cardBackground,
+          borderWidth: 1,
+          borderColor: tokens.cardBorder,
+          ...shadow,
+        };
+    }
+  })();
 
   const content = (
-    <View
-      style={[styles.card, variantStyles[variant], style]}
-      {...otherProps}
-    >
+    <View style={[styles.card, variantStyle, style]} {...otherProps}>
       {children}
     </View>
   );
@@ -69,7 +107,7 @@ export function Card({
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: BorderRadius.xl ?? 20,
+    borderRadius: BorderRadius.card,
     padding: Spacing.md,
     gap: Spacing.sm + 4,
     marginBottom: Spacing.sm + 4,

@@ -1,9 +1,7 @@
-import { LinearGradient } from 'expo-linear-gradient';
 import * as React from 'react';
 import {
   Pressable,
   RefreshControl,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   View,
@@ -11,29 +9,29 @@ import {
 } from 'react-native';
 import { BarChart, LineChart } from 'react-native-chart-kit';
 import Animated, {
-  FadeInDown,
+  Easing,
   FadeInUp,
   useAnimatedProps,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
-  Easing,
 } from 'react-native-reanimated';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
 
 import { ThemedText } from '@/components/themed-text';
-import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors, Spacing } from '@/constants/theme';
+import { Ico, type IcoName } from '@/components/ui/ico';
+import { SectionHeader } from '@/components/ui/section-header';
+import { Brand, Spacing, Type, tonal, tonalBorder } from '@/constants/theme';
 import { useTranslation } from '@/contexts/i18n-context';
-import { useAnalytics, formatSleepHours, getTrendIcon, getTrendColor } from '@/hooks/use-analytics';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { formatSleepHours, useAnalytics } from '@/hooks/use-analytics';
 import { useSleepJournal } from '@/hooks/use-sleep-journal';
-import { useStressMonitor, getStressEmoji } from '@/hooks/use-stress-monitor';
+import { useStressMonitor } from '@/hooks/use-stress-monitor';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
+// ── Helpers ──────────────────────────────────────────────────────────────────
 function getLast7DayLabels(days: string[]): string[] {
   return [...Array(7)].map((_, i) => {
     const d = new Date();
@@ -42,12 +40,22 @@ function getLast7DayLabels(days: string[]): string[] {
   });
 }
 
-// Animated sleep score arc — dashes fill from 0 to score on mount
-function SleepScoreArc({ score, size = 120 }: { score: number; size?: number }) {
-  const strokeWidth = 10;
+function trendVisual(raw: string): { icon: IcoName; color: string } {
+  if (raw === 'improving') return { icon: 'ArrowUp', color: Brand.good };
+  if (raw === 'declining' || raw === 'worsening') return { icon: 'ArrowDown', color: '#ff6b6b' };
+  return { icon: 'Minus', color: Brand.warn };
+}
+
+function scoreColor(score: number): string {
+  return score >= 80 ? Brand.good : score >= 60 ? Brand.warn : '#ff6b6b';
+}
+
+// ── Score arc ────────────────────────────────────────────────────────────────
+function SleepScoreArc({ score, size = 140 }: { score: number; size?: number }) {
+  const strokeWidth = 12;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
-  const arcLength = Math.PI * radius; // half circle
+  const arcLength = Math.PI * radius;     // half circle
   const dashOffset = circumference * 0.25;
 
   const progress = useSharedValue(0);
@@ -57,8 +65,7 @@ function SleepScoreArc({ score, size = 120 }: { score: number; size?: number }) 
       duration: 1200,
       easing: Easing.out(Easing.cubic),
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [score]);
+  }, [score, progress]);
 
   const trackProps = useAnimatedProps(() => ({
     strokeDasharray: `${arcLength} ${circumference - arcLength}`,
@@ -73,16 +80,16 @@ function SleepScoreArc({ score, size = 120 }: { score: number; size?: number }) 
     };
   });
 
-  const scoreColor = score >= 80 ? '#4ADE80' : score >= 60 ? '#FBBF24' : '#F87171';
+  const fill = scoreColor(score);
 
   return (
-    <View style={{ width: size, height: size / 2 + 24, alignItems: 'center' }}>
+    <View style={{ width: size, height: size / 2 + 22, alignItems: 'center' }}>
       <Svg width={size} height={size} style={{ position: 'absolute', top: 0 }}>
         <AnimatedCircle
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          stroke="rgba(255,255,255,0.15)"
+          stroke={Brand.borderSoft}
           strokeWidth={strokeWidth}
           fill="transparent"
           strokeLinecap="round"
@@ -92,111 +99,129 @@ function SleepScoreArc({ score, size = 120 }: { score: number; size?: number }) 
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          stroke={scoreColor}
+          stroke={fill}
           strokeWidth={strokeWidth}
           fill="transparent"
           strokeLinecap="round"
           animatedProps={fillProps}
         />
       </Svg>
-      <View style={{ position: 'absolute', top: size / 2 - 8, alignItems: 'center' }}>
-        <ThemedText style={{ fontSize: 26, fontWeight: '800', color: '#FFFFFF' }}>
-          {score}
-        </ThemedText>
-        <ThemedText style={{ fontSize: 10, color: 'rgba(255,255,255,0.7)', marginTop: -2 }}>
-          / 100
-        </ThemedText>
+      <View style={{ position: 'absolute', top: size / 2 - 14, alignItems: 'center' }}>
+        <ThemedText style={[styles.scoreNumber, { color: Brand.textPrimary }]}>{score}</ThemedText>
+        <ThemedText style={styles.scoreUnit}>/ 100</ThemedText>
       </View>
     </View>
   );
 }
 
-// Animated progress bar
+// ── Animated progress bar ────────────────────────────────────────────────────
 function AnimatedProgressBar({
   progress: targetProgress,
   color,
-  trackColor,
 }: {
   progress: number;
   color: string;
-  trackColor: string;
 }) {
   const width = useSharedValue(0);
 
   React.useEffect(() => {
     width.value = withTiming(targetProgress, { duration: 900, easing: Easing.out(Easing.cubic) });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [targetProgress]);
+  }, [targetProgress, width]);
 
-  const barStyle = useAnimatedStyle(() => ({
-    width: `${width.value}%` as any,
-  }));
+  const barStyle = useAnimatedStyle(() => ({ width: `${width.value}%` as any }));
 
   return (
-    <View style={[styles.targetTrack, { backgroundColor: trackColor }]}>
+    <View style={styles.targetTrack}>
       <Animated.View style={[styles.targetBar, { backgroundColor: color }, barStyle]} />
     </View>
   );
 }
 
-// Skeleton placeholder for loading state
-function SkeletonBox({ height = 16, width = '100%', style }: { height?: number; width?: number | string; style?: any }) {
+// ── Skeleton ─────────────────────────────────────────────────────────────────
+function SkeletonBox({ height = 14, width = '100%' }: { height?: number; width?: number | string }) {
   const opacity = useSharedValue(0.4);
 
   React.useEffect(() => {
     opacity.value = withTiming(1, { duration: 600, easing: Easing.inOut(Easing.ease) });
     const interval = setInterval(() => {
       opacity.value = withTiming(0.4, { duration: 700 });
-      setTimeout(() => {
-        opacity.value = withTiming(1, { duration: 700 });
-      }, 700);
+      setTimeout(() => { opacity.value = withTiming(1, { duration: 700 }); }, 700);
     }, 1400);
     return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [opacity]);
 
   const animStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
 
   return (
     <Animated.View
       style={[
-        { height, width, borderRadius: 8, backgroundColor: '#CBD5E1' },
+        { height, width: width as any, borderRadius: 6, backgroundColor: Brand.surfaceElevated },
         animStyle,
-        style,
       ]}
     />
   );
 }
 
+// ── Stat row ─────────────────────────────────────────────────────────────────
 function StatRow({
-  icon, iconColor, label, value, colors,
+  icon, iconColor, label, value, isLast,
 }: {
-  icon: string;
+  icon: IcoName;
   iconColor: string;
   label: string;
   value: string;
-  colors: typeof Colors.light;
+  isLast?: boolean;
 }) {
+  const Icon = Ico[icon];
   return (
-    <View style={[styles.statRow, { borderBottomColor: colors.cardBorder }]}>
+    <View style={[styles.statRow, !isLast && styles.statRowDivider]}>
       <View style={styles.statRowLeft}>
-        <View style={[styles.statIcon, { backgroundColor: iconColor + '20' }]}>
-          <IconSymbol name={icon as any} size={18} color={iconColor} />
+        <View style={[styles.iconChip, { backgroundColor: tonal(iconColor), borderColor: tonalBorder(iconColor) }]}>
+          <Icon size={18} color={iconColor} />
         </View>
         <ThemedText style={styles.statLabel} numberOfLines={1}>{label}</ThemedText>
       </View>
-      <ThemedText style={[styles.statRowValue, { color: colors.text }]} numberOfLines={1}>
-        {value}
-      </ThemedText>
+      <ThemedText style={styles.statRowValue} numberOfLines={1}>{value}</ThemedText>
     </View>
   );
 }
 
+// ── Trend row ────────────────────────────────────────────────────────────────
+function TrendRow({ label, raw, valueLabel }: { label: string; raw: string; valueLabel: string }) {
+  const v = trendVisual(raw);
+  const TrendIcon = Ico[v.icon];
+  return (
+    <View style={styles.trendRow}>
+      <ThemedText style={styles.trendLabel}>{label}</ThemedText>
+      <View
+        style={[
+          styles.trendPill,
+          { backgroundColor: tonal(v.color), borderColor: tonalBorder(v.color) },
+        ]}
+      >
+        <TrendIcon size={12} color={v.color} />
+        <ThemedText style={[styles.trendPillText, { color: v.color }]}>{valueLabel}</ThemedText>
+      </View>
+    </View>
+  );
+}
+
+// ── Status pill (analytics card header) ──────────────────────────────────────
+function StatusPill({ tone, label }: { tone: 'good' | 'warn' | 'bad'; label: string }) {
+  const c = tone === 'good' ? Brand.good : tone === 'warn' ? Brand.warn : '#ff6b6b';
+  return (
+    <View style={[styles.statusPill, { backgroundColor: tonal(c), borderColor: tonalBorder(c) }]}>
+      <View style={[styles.statusDot, { backgroundColor: c }]} />
+      <ThemedText style={[styles.statusPillText, { color: c }]}>{label}</ThemedText>
+    </View>
+  );
+}
+
+// ── Screen ───────────────────────────────────────────────────────────────────
 export default function StatsScreen() {
-  const colorScheme = useColorScheme() ?? 'light';
-  const colors = Colors[colorScheme];
   const { width: screenW } = useWindowDimensions();
-  const chartWidth = screenW - 48 - 16; // padding + card inner
+  // Card padding is 16, screen padding 16 — chart fills the inner width.
+  const chartWidth = screenW - Spacing.md * 4;
 
   const { entries, stats: localStats } = useSleepJournal();
   const {
@@ -208,7 +233,7 @@ export default function StatsScreen() {
   } = useAnalytics();
   const { latestStress } = useStressMonitor();
   const [isRefreshing, setIsRefreshing] = React.useState(false);
-  const { t } = useTranslation();
+  const { t, tArray } = useTranslation();
 
   const sleepQualityPercentage = React.useMemo(() => {
     if (sleepAnalysis?.averageQuality) return Math.round(sleepAnalysis.averageQuality);
@@ -218,17 +243,11 @@ export default function StatsScreen() {
 
   const recent7 = entries.slice(0, 7);
 
-  const avgDeepSleep = React.useMemo(() => {
-    if (recent7.length === 0) return '--';
-    const avg = recent7.reduce((s, e) => s + e.sleepHours * 0.4, 0) / recent7.length;
-    return `${Math.floor(avg)}h ${Math.round((avg - Math.floor(avg)) * 60)}m`;
-  }, [recent7]);
-
-  const avgRemSleep = React.useMemo(() => {
-    if (recent7.length === 0) return '--';
-    const avg = recent7.reduce((s, e) => s + e.sleepHours * 0.25, 0) / recent7.length;
-    return `${Math.floor(avg)}h ${Math.round((avg - Math.floor(avg)) * 60)}m`;
-  }, [recent7]);
+  // Phase data only comes from per-night AI prediction, not from journal aggregation.
+  // Showing a 40 % / 25 % heuristic of total sleep would be misleading, so we surface
+  // "No data" and rely on AiPredictionCard for real values.
+  const avgDeepSleep = t('common.noData');
+  const avgRemSleep = t('common.noData');
 
   const stressLabel = React.useMemo(() => {
     if (stressAnalysis?.averageStressLevel != null) {
@@ -240,19 +259,22 @@ export default function StatsScreen() {
         : latestStress.stressLevel === 'MEDIUM' ? t('stats.stress_medium')
         : t('stats.stress_high');
     }
-    const l = localStats.avgStressLevel ?? 0;
+    if (!localStats.avgStressLevel) return t('common.noData');
+    const l = localStats.avgStressLevel;
     return l <= 4 ? t('stats.stress_low') : l <= 6 ? t('stats.stress_medium') : t('stats.stress_high');
   }, [localStats.avgStressLevel, stressAnalysis, latestStress, t]);
 
-  const sleepTrend = React.useMemo(() => {
-    const raw = sleepAnalysis?.sleepTrend ?? 'stable';
-    return {
-      raw,
-      label: raw === 'improving' ? t('stats.trend_improving') : raw === 'declining' ? t('stats.trend_declining') : t('stats.trend_stable'),
-      icon: getTrendIcon(raw),
-      color: getTrendColor(raw),
-    };
-  }, [sleepAnalysis, t]);
+  const sleepTrendRaw = sleepAnalysis?.sleepTrend ?? 'stable';
+  const sleepTrendLabel = sleepTrendRaw === 'improving'
+    ? t('stats.trend_improving')
+    : sleepTrendRaw === 'declining' ? t('stats.trend_declining')
+    : t('stats.trend_stable');
+
+  const stressTrendRaw = stressAnalysis?.stressTrend ?? 'stable';
+  const stressTrendLabel = stressTrendRaw === 'improving'
+    ? t('stats.trend_improving')
+    : stressTrendRaw === 'worsening' ? t('stats.trend_worsening')
+    : t('stats.trend_stable');
 
   const onRefresh = React.useCallback(async () => {
     setIsRefreshing(true);
@@ -264,80 +286,105 @@ export default function StatsScreen() {
     return Math.max(0, Math.min(100, Math.round((avg / 8) * 100)));
   }, [sleepAnalysis, localStats.avgSleepHours]);
 
-  // Safe chart data — react-native-chart-kit crashes on all-zero or empty arrays
+  // chart-kit crashes on all-zero / empty arrays — coerce to a tiny non-zero value.
   const sleepChartData = React.useMemo(() => {
     const raw = [...Array(7)].map((_, i) => recent7[6 - i]?.sleepHours ?? 0);
-    const hasData = raw.some(v => v > 0);
-    return hasData ? raw.map(v => Math.max(v, 0.01)) : [0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01];
+    const hasData = raw.some((v) => v > 0);
+    return hasData ? raw.map((v) => Math.max(v, 0.01)) : [0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01];
   }, [recent7]);
 
   const stressChartData = React.useMemo(() => {
     const raw = [...Array(7)].map((_, i) => recent7[6 - i]?.stressLevel ?? 0);
-    const hasData = raw.some(v => v > 0);
-    return hasData ? raw.map(v => Math.max(v, 0)) : [0, 0, 0, 0, 0, 0, 0];
+    const hasData = raw.some((v) => v > 0);
+    return hasData ? raw.map((v) => Math.max(v, 0)) : [0, 0, 0, 0, 0, 0, 0];
   }, [recent7]);
 
+  // chart-kit accepts hex/rgb in `color` but expects a function returning rgba-ish string.
+  // Brand tokens stay literal here — chart-kit doesn't support our token system natively.
   const chartConfig = React.useMemo(() => ({
     backgroundColor: 'transparent',
-    backgroundGradientFrom: colors.cardBackground,
-    backgroundGradientTo: colors.cardBackground,
+    backgroundGradientFrom: Brand.surface,
+    backgroundGradientTo: Brand.surface,
     decimalPlaces: 1,
-    color: () => colors.tint,
-    labelColor: () => colors.textSecondary,
-    propsForDots: { r: '5', strokeWidth: '2', stroke: colors.tint },
-    propsForBackgroundLines: { stroke: colors.cardBorder, strokeDasharray: '5,5' },
-  }), [colors]);
+    color: () => Brand.accent,
+    labelColor: () => Brand.textSecondary,
+    propsForDots: { r: '4', strokeWidth: '2', stroke: Brand.accent },
+    propsForBackgroundLines: { stroke: Brand.borderSoft, strokeDasharray: '4,4' },
+  }), []);
 
   const stressChartConfig = React.useMemo(() => ({
     ...chartConfig,
     decimalPlaces: 0,
-    color: () => colors.accent,
-    barPercentage: 0.6,
-  }), [chartConfig, colors.accent]);
+    color: () => Brand.flame,
+    barPercentage: 0.55,
+  }), [chartConfig]);
 
-  const days = t('stats.days') as unknown as string[];
+  const days = tArray('stats.days');
+  const totalEntries = localStats.count || sleepAnalysis?.totalEntries || 0;
+
+  // Status pill state — analyticsLoading > analyticsOffline > online
+  const status: { tone: 'good' | 'warn' | 'bad'; label: string } = analyticsLoading
+    ? { tone: 'warn', label: t('common.loading') }
+    : analyticsOffline
+      ? { tone: 'bad',  label: t('home.offline') }
+      : { tone: 'good', label: t('stats.current') };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <LinearGradient
-        colors={[colors.headerGradientStart, colors.headerGradientMid, colors.headerGradientEnd]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.header}
-      >
-        <SafeAreaView style={{ flex: 1 }}>
-          <Animated.View entering={FadeInDown.duration(500)} style={styles.headerContent}>
-            <ThemedText style={styles.headerTitle}>{t('stats.title')}</ThemedText>
-            <SleepScoreArc score={sleepQualityPercentage} size={130} />
-            <ThemedText style={styles.headerSubtitle}>{t('stats.sleepScore')}</ThemedText>
-          </Animated.View>
-        </SafeAreaView>
-      </LinearGradient>
+    <View style={styles.screen}>
+      {/* ── Header ──────────────────────────────────────────────────── */}
+      <SafeAreaView edges={['top']} style={{ backgroundColor: Brand.background }}>
+        <View style={styles.header}>
+          <ThemedText style={styles.headerTitle}>{t('stats.title')}</ThemedText>
+        </View>
+      </SafeAreaView>
 
       <ScrollView
-        style={styles.scrollView}
+        style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={colors.tint} />
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={onRefresh}
+            tintColor={Brand.accent}
+            colors={[Brand.accent]}
+            progressBackgroundColor={Brand.surface}
+          />
         }
       >
-        {/* Analytics card */}
-        <Animated.View entering={FadeInUp.delay(70).duration(350)}>
-          <Card variant="default">
-            <View style={styles.analyticsHeaderRow}>
-              <ThemedText type="subtitle">{t('stats.analytics')}</ThemedText>
-              <Badge
-                label={analyticsLoading ? t('common.loading') : analyticsOffline ? t('home.offline') : t('stats.current')}
-                variant={analyticsLoading ? 'warning' : analyticsOffline ? 'danger' : 'success'}
-                size="sm"
-                animated={false}
-              />
+        {/* ── Score hero ─────────────────────────────────────────── */}
+        <Animated.View entering={FadeInUp.duration(350)}>
+          <Card variant="bordered" animated={false}>
+            <View style={styles.scoreCardInner}>
+              <ThemedText style={styles.scoreLabel}>{t('stats.sleepScore')}</ThemedText>
+              <SleepScoreArc score={sleepQualityPercentage} size={130} />
+              <ThemedText
+                style={[
+                  styles.scoreCaption,
+                  { color: scoreColor(sleepQualityPercentage) },
+                ]}
+              >
+                {sleepQualityPercentage >= 80
+                  ? t('stats.scoreCaption_high')
+                  : sleepQualityPercentage >= 60
+                    ? t('stats.scoreCaption_mid')
+                    : t('stats.scoreCaption_low')}
+              </ThemedText>
+            </View>
+          </Card>
+        </Animated.View>
+
+        {/* ── Analytics status ───────────────────────────────────── */}
+        <Animated.View entering={FadeInUp.delay(60).duration(350)}>
+          <Card variant="bordered" animated={false}>
+            <View style={styles.analyticsHeader}>
+              <ThemedText style={styles.analyticsTitle}>{t('stats.analytics')}</ThemedText>
+              <StatusPill tone={status.tone} label={status.label} />
             </View>
             {analyticsLoading ? (
-              <View style={{ gap: 8 }}>
-                <SkeletonBox height={13} width="70%" />
-                <SkeletonBox height={10} />
+              <View style={{ gap: 8, marginTop: 4 }}>
+                <SkeletonBox height={12} width="60%" />
+                <SkeletonBox height={8} />
               </View>
             ) : (
               <>
@@ -346,164 +393,169 @@ export default function StatsScreen() {
                 </ThemedText>
                 <AnimatedProgressBar
                   progress={weeklyTargetProgress}
-                  color={weeklyTargetProgress >= 85 ? colors.success : colors.warning}
-                  trackColor={colors.cardBorder}
+                  color={weeklyTargetProgress >= 85 ? Brand.good : Brand.warn}
                 />
               </>
             )}
-            <Pressable onPress={onRefresh}>
-              <ThemedText style={[styles.refreshLink, { color: colors.tint }]}>{t('stats.updateAnalytics')}</ThemedText>
+            <Pressable onPress={onRefresh} style={styles.refreshHit} hitSlop={6}>
+              <ThemedText style={styles.refreshLink}>{t('stats.updateAnalytics')}</ThemedText>
             </Pressable>
           </Card>
         </Animated.View>
 
-        {/* Sleep stats */}
-        <Animated.View entering={FadeInUp.delay(110).duration(400)}>
-          <Card variant="elevated">
-            <ThemedText type="subtitle">{t('stats.mySleepStats')}</ThemedText>
-            <StatRow icon="moon.fill" iconColor={colors.tint} label={t('stats.avgSleep')}
-              value={sleepAnalysis?.averageSleepHours ? formatSleepHours(sleepAnalysis.averageSleepHours) : localStats.avgSleepHours ? `${localStats.avgSleepHours}h` : '7h 42m'}
-              colors={colors} />
-            <StatRow icon="moon.zzz.fill" iconColor={colors.deepSleep} label={t('stats.deepSleep')} value={avgDeepSleep} colors={colors} />
-            <StatRow icon="brain.head.profile" iconColor={colors.remSleep} label={t('stats.remPhase')} value={avgRemSleep} colors={colors} />
-            <StatRow icon="heart.fill" iconColor={colors.danger} label={t('stats.stressLevel')}
-              value={`${stressLabel} ${latestStress ? getStressEmoji(latestStress.stressLevel) : ''}`.trim()}
-              colors={colors} />
-            <StatRow icon="waveform.path.ecg" iconColor={colors.heartRate} label={t('stats.heartRate')}
-              value={latestStress?.hrvScore != null ? String(latestStress.hrvScore) : '--'}
-              colors={colors} />
-          </Card>
-        </Animated.View>
+        {/* ── Sleep stats ────────────────────────────────────────── */}
+        <SectionHeader title={t('stats.mySleepStats')} />
+        <Card variant="flat" animated={false} style={styles.cardPad}>
+          <StatRow
+            icon="Moon"
+            iconColor={Brand.accent}
+            label={t('stats.avgSleep')}
+            value={sleepAnalysis?.averageSleepHours
+              ? formatSleepHours(sleepAnalysis.averageSleepHours)
+              : localStats.avgSleepHours
+                ? `${localStats.avgSleepHours}h`
+                : t('common.noData')}
+          />
+          <StatRow icon="Moon" iconColor={Brand.info} label={t('stats.deepSleep')} value={avgDeepSleep} />
+          <StatRow icon="Sparkles" iconColor={Brand.good} label={t('stats.remPhase')} value={avgRemSleep} />
+          <StatRow icon="Heart" iconColor="#ff6b6b" label={t('stats.stressLevel')} value={stressLabel} />
+          <StatRow
+            icon="Pulse"
+            iconColor={Brand.flame}
+            label={t('stats.heartRate')}
+            value={latestStress?.hrvScore != null ? String(Math.round(latestStress.hrvScore)) : t('common.noData')}
+            isLast
+          />
+        </Card>
 
-        {/* Weekly overview */}
-        <Animated.View entering={FadeInUp.delay(200).duration(400)}>
-          <Card variant="default">
-            <ThemedText type="subtitle">{t('stats.weeklyOverview')}</ThemedText>
-            <View style={styles.weekGrid}>
-              {days.slice(1).concat(days.slice(0, 1)).map((day, index) => {
-                const entry = recent7[6 - index];
-                return (
-                  <View key={`${day}-${index}`} style={styles.weekDay}>
-                    <ThemedText style={styles.weekDayLabel} numberOfLines={1}>{day}</ThemedText>
-                    <View style={[styles.weekDayIndicator, {
-                      backgroundColor: entry
-                        ? entry.sleepHours >= 7 ? colors.success : colors.warning
-                        : colors.cardBorder,
-                    }]} />
-                    <ThemedText style={styles.weekDayValue}>
-                      {entry ? `${entry.sleepHours}h` : '-'}
-                    </ThemedText>
-                  </View>
-                );
-              })}
+        {/* ── Weekly overview ───────────────────────────────────── */}
+        <SectionHeader title={t('stats.weeklyOverview')} />
+        <Card variant="bordered" animated={false}>
+          <View style={styles.weekGrid}>
+            {days.slice(1).concat(days.slice(0, 1)).map((day, index) => {
+              const entry = recent7[6 - index];
+              const filled = !!entry;
+              const dotColor = filled
+                ? entry.sleepHours >= 7 ? Brand.good : Brand.warn
+                : Brand.surfaceElevated;
+              return (
+                <View key={`${day}-${index}`} style={styles.weekDay}>
+                  <ThemedText style={styles.weekDayLabel} numberOfLines={1}>{day}</ThemedText>
+                  <View
+                    style={[
+                      styles.weekDayIndicator,
+                      {
+                        backgroundColor: dotColor,
+                        borderColor: filled ? tonalBorder(dotColor) : Brand.border,
+                      },
+                    ]}
+                  />
+                  <ThemedText style={[styles.weekDayValue, !filled && { color: Brand.textMuted }]}>
+                    {filled ? `${entry.sleepHours}h` : '—'}
+                  </ThemedText>
+                </View>
+              );
+            })}
+          </View>
+        </Card>
+
+        {/* ── Sleep trend chart ─────────────────────────────────── */}
+        <SectionHeader title={t('stats.lastWeek')} />
+        <Card variant="bordered" animated={false}>
+          {recent7.length === 0 ? (
+            <View style={styles.emptyChart}>
+              <Ico.ChartBar size={32} color={Brand.textMuted} />
+              <ThemedText style={styles.emptyChartText}>{t('common.noData')}</ThemedText>
             </View>
-          </Card>
-        </Animated.View>
-
-        {/* Sleep trend chart */}
-        <Animated.View entering={FadeInUp.delay(250).duration(400)}>
-          <Card variant="elevated">
-            <View style={styles.chartTitleRow}>
-              <ThemedText type="subtitle">{t('stats.lastWeek')}</ThemedText>
-            </View>
-            {recent7.length === 0 ? (
-              <View style={styles.emptyChart}>
-                <IconSymbol name="chart.line.uptrend.xyaxis" size={40} color={colors.tint} />
-                <ThemedText style={[styles.emptyChartText, { color: colors.textSecondary }]}>{t('common.noData')}</ThemedText>
-              </View>
-            ) : (
-              <View style={styles.chartContainer}>
-                <LineChart
-                  data={{ labels: getLast7DayLabels(days), datasets: [{ data: sleepChartData, color: () => colors.tint, strokeWidth: 3 }] }}
-                  width={chartWidth}
-                  height={180}
-                  chartConfig={chartConfig}
-                  bezier
-                  style={styles.chart}
-                  withInnerLines
-                  withOuterLines={false}
-                />
-              </View>
-            )}
-          </Card>
-        </Animated.View>
-
-        {/* Stress chart */}
-        <Animated.View entering={FadeInUp.delay(280).duration(400)}>
-          <Card variant="elevated">
-            <View style={styles.chartTitleRow}>
-              <ThemedText type="subtitle">{t('stats.stressDynamics')}</ThemedText>
-            </View>
-            {recent7.length === 0 ? (
-              <View style={styles.emptyChart}>
-                <IconSymbol name="waveform.path.ecg" size={40} color={colors.accent} />
-                <ThemedText style={[styles.emptyChartText, { color: colors.textSecondary }]}>{t('common.noData')}</ThemedText>
-              </View>
-            ) : (
-              <View style={styles.chartContainer}>
-                <BarChart
-                  data={{ labels: getLast7DayLabels(days), datasets: [{ data: stressChartData }] }}
-                  width={chartWidth}
-                  height={160}
-                  chartConfig={stressChartConfig}
-                  style={styles.chart}
-                  withInnerLines
-                  showValuesOnTopOfBars
-                  fromZero
-                  yAxisSuffix=""
-                  yAxisLabel=""
-                />
-              </View>
-            )}
-          </Card>
-        </Animated.View>
-
-        {/* Trends */}
-        <Animated.View entering={FadeInUp.delay(290).duration(400)}>
-          <Card variant="default">
-            <View style={styles.trendRow}>
-              <ThemedText type="subtitle">{sleepTrend.icon} {t('stats.sleepTrend')}</ThemedText>
-              <Badge
-                label={sleepTrend.label}
-                variant={sleepTrend.raw === 'improving' ? 'success' : sleepTrend.raw === 'declining' ? 'danger' : 'warning'}
+          ) : (
+            <View style={styles.chartContainer}>
+              <LineChart
+                data={{
+                  labels: getLast7DayLabels(days),
+                  datasets: [{ data: sleepChartData, color: () => Brand.accent, strokeWidth: 3 }],
+                }}
+                width={chartWidth}
+                height={170}
+                chartConfig={chartConfig}
+                bezier
+                style={styles.chart}
+                withInnerLines
+                withOuterLines={false}
               />
             </View>
-            {stressAnalysis && (
-              <View style={styles.trendRow}>
-                <ThemedText type="subtitle">{getTrendIcon(stressAnalysis.stressTrend)} {t('stats.stressTrend')}</ThemedText>
-                <Badge
-                  label={stressAnalysis.stressTrend === 'improving' ? t('stats.trend_improving') : stressAnalysis.stressTrend === 'worsening' ? t('stats.trend_worsening') : t('stats.trend_stable')}
-                  variant={stressAnalysis.stressTrend === 'improving' ? 'success' : stressAnalysis.stressTrend === 'worsening' ? 'danger' : 'warning'}
-                />
-              </View>
-            )}
-          </Card>
-        </Animated.View>
+          )}
+        </Card>
 
-        {/* Insights */}
-        <Animated.View entering={FadeInUp.delay(300).duration(400)}>
-          <Card variant="outlined">
-            <ThemedText type="subtitle">{t('stats.aiInsights')}</ThemedText>
-            {sleepAnalysis?.insights?.slice(0, 2).map((insight, i) => (
-              <View key={`sl-${i}`} style={styles.insightItem}>
-                <IconSymbol name={i === 0 ? 'arrow.up.circle.fill' : 'star.fill'} size={20} color={i === 0 ? colors.success : colors.warning} />
-                <ThemedText style={styles.insightText}>{insight}</ThemedText>
-              </View>
-            ))}
-            {stressAnalysis?.insights?.slice(0, 1).map((insight, i) => (
-              <View key={`st-${i}`} style={styles.insightItem}>
-                <IconSymbol name="heart.fill" size={20} color={colors.danger} />
-                <ThemedText style={styles.insightText}>{insight}</ThemedText>
-              </View>
-            ))}
-            <View style={styles.insightItem}>
-              <IconSymbol name="target" size={20} color={colors.tint} />
-              <ThemedText style={styles.insightText}>
-                {t('stats.journalEntries').replace('{{n}}', String(localStats.count || sleepAnalysis?.totalEntries || 0))}
-              </ThemedText>
+        {/* ── Stress chart ──────────────────────────────────────── */}
+        <SectionHeader title={t('stats.stressDynamics')} />
+        <Card variant="bordered" animated={false}>
+          {recent7.length === 0 ? (
+            <View style={styles.emptyChart}>
+              <Ico.Pulse size={32} color={Brand.textMuted} />
+              <ThemedText style={styles.emptyChartText}>{t('common.noData')}</ThemedText>
             </View>
-          </Card>
-        </Animated.View>
+          ) : (
+            <View style={styles.chartContainer}>
+              <BarChart
+                data={{ labels: getLast7DayLabels(days), datasets: [{ data: stressChartData }] }}
+                width={chartWidth}
+                height={160}
+                chartConfig={stressChartConfig}
+                style={styles.chart}
+                withInnerLines
+                showValuesOnTopOfBars
+                fromZero
+                yAxisSuffix=""
+                yAxisLabel=""
+              />
+            </View>
+          )}
+        </Card>
+
+        {/* ── Trends ────────────────────────────────────────────── */}
+        <SectionHeader title={t('stats.sleepTrend')} />
+        <Card variant="flat" animated={false} style={styles.cardPad}>
+          <View style={styles.trendRowOuter}>
+            <TrendRow label={t('stats.avgSleep')} raw={sleepTrendRaw} valueLabel={sleepTrendLabel} />
+          </View>
+          {stressAnalysis ? (
+            <View style={[styles.trendRowOuter, styles.statRowDivider]}>
+              <TrendRow label={t('stats.stressLevel')} raw={stressTrendRaw} valueLabel={stressTrendLabel} />
+            </View>
+          ) : null}
+        </Card>
+
+        {/* ── AI insights ──────────────────────────────────────── */}
+        <SectionHeader title={t('stats.aiInsights')} />
+        <Card variant="bordered" animated={false}>
+          {sleepAnalysis?.insights?.slice(0, 2).map((insight, i) => (
+            <View key={`sl-${i}`} style={styles.insightItem}>
+              <View style={[
+                styles.insightIcon,
+                { backgroundColor: tonal(i === 0 ? Brand.good : Brand.warn), borderColor: tonalBorder(i === 0 ? Brand.good : Brand.warn) },
+              ]}>
+                {i === 0 ? <Ico.ArrowUp size={14} color={Brand.good} /> : <Ico.Star size={14} color={Brand.warn} />}
+              </View>
+              <ThemedText style={styles.insightText}>{insight}</ThemedText>
+            </View>
+          ))}
+          {stressAnalysis?.insights?.slice(0, 1).map((insight, i) => (
+            <View key={`st-${i}`} style={styles.insightItem}>
+              <View style={[styles.insightIcon, { backgroundColor: tonal('#ff6b6b'), borderColor: tonalBorder('#ff6b6b') }]}>
+                <Ico.Heart size={14} color="#ff6b6b" />
+              </View>
+              <ThemedText style={styles.insightText}>{insight}</ThemedText>
+            </View>
+          ))}
+          <View style={styles.insightItem}>
+            <View style={[styles.insightIcon, { backgroundColor: tonal(Brand.accent), borderColor: tonalBorder(Brand.accent) }]}>
+              <Ico.Sparkles size={14} color={Brand.accent} />
+            </View>
+            <ThemedText style={styles.insightText}>
+              {t('stats.journalEntries').replace('{{n}}', String(totalEntries))}
+            </ThemedText>
+          </View>
+        </Card>
 
         <View style={{ height: 32 }} />
       </ScrollView>
@@ -511,49 +563,125 @@ export default function StatsScreen() {
   );
 }
 
+// ── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  screen: { flex: 1, backgroundColor: Brand.background },
+
+  // Header
   header: {
-    paddingTop: 12,
-    paddingBottom: 20,
     paddingHorizontal: Spacing.lg,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-    overflow: 'hidden',
+    paddingTop: 8,
+    paddingBottom: 12,
+    alignItems: 'center',
   },
-  headerContent: { paddingTop: 16, alignItems: 'center' },
-  headerTitle: { fontSize: 20, fontWeight: '700', color: '#FFFFFF', marginBottom: 2 },
-  headerSubtitle: { fontSize: 13, color: 'rgba(255,255,255,0.8)', marginBottom: 12, marginTop: 4 },
-  scrollView: { flex: 1 },
-  scrollContent: { padding: Spacing.md, gap: Spacing.md },
+  headerTitle: { ...Type.titleL, color: Brand.textPrimary },
+
+  // Scroll
+  scroll: { flex: 1 },
+  scrollContent: { paddingHorizontal: Spacing.md, paddingBottom: 32 },
+
+  // Score hero
+  scoreCardInner: { alignItems: 'center', paddingVertical: 8 },
+  scoreLabel: { ...Type.section, color: Brand.textMuted },
+  scoreNumber: { ...Type.monoL, fontSize: 38, lineHeight: 42, fontWeight: '700' },
+  scoreUnit: { ...Type.monoS, color: Brand.textMuted, marginTop: -2, fontSize: 11 },
+  scoreCaption: { ...Type.bodyS, fontSize: 12, fontWeight: '600', marginTop: 6 },
+
+  // Analytics card
+  analyticsHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
+  analyticsTitle: { ...Type.titleS, color: Brand.textPrimary },
+  analyticsMeta: { ...Type.bodyS, color: Brand.textSecondary, marginBottom: 10, fontSize: 12 },
+  targetTrack: { width: '100%', height: 6, borderRadius: 999, overflow: 'hidden', backgroundColor: Brand.borderSoft },
+  targetBar: { height: '100%', borderRadius: 999 },
+  refreshHit: { paddingVertical: 8, marginTop: 6, alignSelf: 'flex-start' },
+  refreshLink: { ...Type.bodyS, color: Brand.accent, fontSize: 13, fontWeight: '600' },
+
+  // Status pill
+  statusPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  statusDot: { width: 6, height: 6, borderRadius: 3 },
+  statusPillText: { ...Type.monoS, fontSize: 10, letterSpacing: 0.6 },
+
+  // Stat row
+  cardPad: { padding: 0, gap: 0 },
   statRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingHorizontal: 16,
     paddingVertical: 14,
-    borderBottomWidth: 1,
+    minHeight: Spacing.hitArea,
+    gap: 12,
   },
+  statRowDivider: { borderBottomWidth: 1, borderBottomColor: Brand.borderSoft },
   statRowLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
-  statIcon: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  statLabel: { fontSize: 15, fontWeight: '500', flex: 1 },
-  statRowValue: { fontSize: 15, fontWeight: '600', flexShrink: 0, marginLeft: 8 },
-  weekGrid: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 },
-  weekDay: { alignItems: 'center', gap: 6 },
-  weekDayLabel: { fontSize: 11, fontWeight: '600', opacity: 0.6 },
-  weekDayIndicator: { width: 8, height: 8, borderRadius: 4 },
-  weekDayValue: { fontSize: 12, fontWeight: '500' },
-  chartContainer: { marginTop: 12, marginHorizontal: -8, alignItems: 'center', overflow: 'hidden' },
-  chart: { borderRadius: 12 },
-  analyticsHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  analyticsMeta: { fontSize: 13, opacity: 0.8, marginBottom: 10 },
-  targetTrack: { width: '100%', height: 10, borderRadius: 999, overflow: 'hidden', marginBottom: 10 },
-  targetBar: { height: '100%', borderRadius: 999 },
-  refreshLink: { fontSize: 13, fontWeight: '600', marginTop: 4 },
-  insightItem: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, paddingVertical: 8 },
-  insightText: { fontSize: 14, flex: 1, lineHeight: 20 },
-  trendRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8 },
-  chartTitleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
-  sampleLabel: { fontSize: 11, fontWeight: '500', opacity: 0.6, fontStyle: 'italic' },
-  emptyChart: { alignItems: 'center', paddingVertical: 32, gap: 12 },
-  emptyChartText: { fontSize: 13, textAlign: 'center', maxWidth: 260, lineHeight: 20 },
+  iconChip: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statLabel: { ...Type.bodyM, color: Brand.textPrimary, fontSize: 14, fontWeight: '500', flex: 1 },
+  statRowValue: { ...Type.monoM, color: Brand.textPrimary, flexShrink: 0, marginLeft: 8 },
+
+  // Weekly overview
+  weekGrid: { flexDirection: 'row', justifyContent: 'space-between' },
+  weekDay: { alignItems: 'center', gap: 6, flex: 1 },
+  weekDayLabel: { ...Type.section, color: Brand.textMuted, fontSize: 10 },
+  weekDayIndicator: { width: 9, height: 9, borderRadius: 5, borderWidth: 1 },
+  weekDayValue: { ...Type.monoS, color: Brand.textPrimary, fontSize: 11 },
+
+  // Charts
+  chartContainer: { marginHorizontal: -8, alignItems: 'center', overflow: 'hidden' },
+  chart: { borderRadius: 12, marginVertical: 4 },
+  emptyChart: { alignItems: 'center', paddingVertical: 28, gap: 10 },
+  emptyChartText: { ...Type.bodyS, color: Brand.textMuted, fontSize: 12 },
+
+  // Trends
+  trendRowOuter: { paddingHorizontal: 16 },
+  trendRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 14,
+    minHeight: Spacing.hitArea,
+  },
+  trendLabel: { ...Type.bodyM, color: Brand.textPrimary, fontSize: 14, fontWeight: '500' },
+  trendPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  trendPillText: { ...Type.monoS, fontSize: 10, letterSpacing: 0.4 },
+
+  // Insights
+  insightItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    paddingVertical: 8,
+  },
+  insightIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 1,
+  },
+  insightText: { ...Type.bodyS, color: Brand.textSecondary, fontSize: 13, flex: 1, lineHeight: 19 },
 });
