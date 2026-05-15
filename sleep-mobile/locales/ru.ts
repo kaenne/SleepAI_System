@@ -88,6 +88,8 @@ export const ru = {
     aiAnalysisSubtitle: 'Утро · отчёт по ночи',
     lastNightTitle: 'Прошлая ночь',
     noEntries: 'Записей пока нет. Добавьте сегодняшний сон, и AI Тренер начнёт строить картину.',
+    invalidSleepHours: 'Введите часы сна в диапазоне {{min}}–{{max}}.',
+    invalidStress: 'Уровень стресса должен быть от 1 до 10.',
   },
   modal: {
     title: 'Запись сна',
@@ -202,6 +204,9 @@ export const ru = {
     qr_schedule_text: 'Как наладить режим сна?',
     qr_snoring_text: 'У меня храп — что делать?',
     qr_melatonin_text: 'Стоит ли принимать мелатонин?',
+    contextSleep: 'сон',
+    contextStress: 'стресс',
+    contextHourUnit: 'ч',
   },
   profile: {
     title: 'Профиль',
@@ -247,6 +252,7 @@ export const ru = {
     ach_streak7: '7 дней подряд',
     ach_8h: 'Сон 8h',
     ach_20: '20 записей',
+    nameSyncFailed: 'Имя сохранено локально, но синхронизация с сервером не удалась.',
   },
   settings: {
     title: 'Настройки',
@@ -291,6 +297,7 @@ export const ru = {
     allowNotificationsMsg: 'Пожалуйста, разрешите уведомления в настройках телефона.',
     reminderSet: 'Напоминание установлено на {{time}} ежедневно',
     clearDone: 'Все данные удалены',
+    clearServerFailed: 'Локальные данные удалены, но серверные стереть не удалось. Попробуйте позже.',
     dailyReminder: 'Ежедневное напоминание ложиться спать',
     timePickerTitle: '⏰ Время напоминания',
     backendInfo: 'URL бэкенда настраивается в файле .env как EXPO_PUBLIC_API_BASE_URL',

@@ -10,10 +10,12 @@ import Animated, {
 import { Card } from '@/components/ui/card';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ThemedText } from '@/components/themed-text';
+import { DEFAULT_HEART_RATE_BPM } from '@/constants/sleep';
 import { Colors, Spacing } from '@/constants/theme';
 import { useTranslation } from '@/contexts/i18n-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { type SleepStressEntry } from '@/hooks/use-sleep-journal';
+import { useUserProfile } from '@/hooks/use-user-profile';
 import { api, type AiPredictionResponse } from '@/services/api';
 
 // ─── Factor bar with animated fill ───────────────────────────────────────────
@@ -73,6 +75,7 @@ export function AiPredictionCard({ entry }: Props) {
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
   const { t } = useTranslation();
+  const { profile } = useUserProfile();
 
   const [result, setResult] = React.useState<AiPredictionResponse | null>(null);
   const [loading, setLoading] = React.useState(false);
@@ -91,8 +94,11 @@ export function AiPredictionCard({ entry }: Props) {
       .predictSleepQuality({
         sleepDuration: entry.sleepHours,
         stressLevel: entry.stressLevel,
-        heartRate: 70,
+        heartRate: DEFAULT_HEART_RATE_BPM,
         bedtimeHour: new Date(entry.createdAt).getHours() || 23,
+        ...(profile.age !== null && { age: profile.age }),
+        ...(profile.gender !== null && { gender: profile.gender }),
+        ...(profile.bmiCategory !== null && { bmiCategory: profile.bmiCategory }),
       })
       .then((data) => {
         setResult(data);
@@ -100,7 +106,7 @@ export function AiPredictionCard({ entry }: Props) {
       })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
-  }, [entry.id, entry.sleepHours, entry.stressLevel, entry.createdAt, qualityWidth]);
+  }, [entry.id, entry.sleepHours, entry.stressLevel, entry.createdAt, qualityWidth, profile.age, profile.gender, profile.bmiCategory]);
 
   if (error) return null;
 

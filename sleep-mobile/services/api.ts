@@ -99,8 +99,11 @@ export type AiPredictionRequest = {
   caffeineIntake?: number;
   alcoholIntake?: number;
   exerciseFrequency?: number;
+  // age / gender / bmiCategory come from the AI Profile editor in profile.tsx.
+  // Omit when the user hasn't set them — the AI service treats missing as NaN.
   age?: number;
-  gender?: number;
+  gender?: number;        // 0 = female, 1 = male
+  bmiCategory?: number;   // 0 = normal, 1 = overweight, 2 = obese
   bedtimeHour?: number;
 };
 

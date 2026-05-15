@@ -5,59 +5,34 @@ import Animated, { FadeInUp } from 'react-native-reanimated';
 
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { Brand } from '@/constants/theme';
 
 interface Props {
-  colorScheme: 'light' | 'dark';
-  tintColor: string;
-  accentColor: string;
-  successColor: string;
   statsLabel: string;
-  journalLabel: string;
   addLabel: string;
   onAddPress: () => void;
 }
 
-export function HomeActionBar({
-  colorScheme,
-  tintColor,
-  statsLabel,
-  journalLabel,
-  addLabel,
-  onAddPress,
-}: Props) {
-  const isDark = colorScheme === 'dark';
+export function HomeActionBar({ statsLabel, addLabel, onAddPress }: Props) {
   return (
     <Animated.View entering={FadeInUp.delay(50).springify()}>
-      <View style={[styles.row, {
-        backgroundColor: isDark ? '#1E1E2D' : '#FFFFFF',
-        borderColor: isDark ? '#2C2C3E' : '#E5E7EB',
-      }]}>
+      <View style={styles.row}>
         {/* Статистика */}
         <Pressable onPress={() => router.navigate('/stats')} style={styles.btn}>
-          <View style={[styles.iconCircle, { backgroundColor: isDark ? '#2D234A' : `${tintColor}15` }]}>
-            <IconSymbol name="chart.bar.fill" size={20} color={tintColor} />
+          <View style={[styles.iconCircle, { backgroundColor: Brand.accentSoft }]}>
+            <IconSymbol name="chart.bar.fill" size={20} color={Brand.accent} />
           </View>
-          <ThemedText style={[styles.label, { color: isDark ? '#A78BFA' : tintColor }]}>{statsLabel}</ThemedText>
+          <ThemedText style={[styles.label, { color: Brand.accent }]}>{statsLabel}</ThemedText>
         </Pressable>
 
-        <View style={[styles.divider, { backgroundColor: isDark ? '#2C2C3E' : '#E5E7EB' }]} />
+        <View style={styles.divider} />
 
-        {/* Дневник */}
-        <Pressable onPress={() => router.navigate('/')} style={styles.btn}>
-          <View style={[styles.iconCircle, { backgroundColor: isDark ? '#1A2A4A' : '#EFF6FF' }]}>
-            <IconSymbol name="book.fill" size={20} color="#60A5FA" />
-          </View>
-          <ThemedText style={[styles.label, { color: '#60A5FA' }]}>{journalLabel}</ThemedText>
-        </Pressable>
-
-        <View style={[styles.divider, { backgroundColor: isDark ? '#2C2C3E' : '#E5E7EB' }]} />
-
-        {/* Добавить — solid green */}
+        {/* Добавить — solid Brand.good */}
         <Pressable onPress={onAddPress} style={styles.btn}>
-          <View style={[styles.iconCircle, { backgroundColor: '#22c55e' }]}>
-            <IconSymbol name="plus" size={20} color="#0a1e0a" />
+          <View style={[styles.iconCircle, { backgroundColor: Brand.good }]}>
+            <IconSymbol name="plus" size={20} color={Brand.textInverse} />
           </View>
-          <ThemedText style={[styles.label, { color: '#22c55e' }]}>{addLabel}</ThemedText>
+          <ThemedText style={[styles.label, { color: Brand.good }]}>{addLabel}</ThemedText>
         </Pressable>
       </View>
     </Animated.View>
@@ -73,6 +48,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-evenly',
     alignItems: 'center',
     borderWidth: 1,
+    backgroundColor: Brand.surface,
+    borderColor: Brand.border,
   },
   btn: { alignItems: 'center', justifyContent: 'center', flex: 1 },
   iconCircle: {
@@ -84,5 +61,5 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   label: { fontSize: 12, fontWeight: '600' },
-  divider: { width: 1, height: 40 },
+  divider: { width: 1, height: 40, backgroundColor: Brand.border },
 });

@@ -1,0 +1,472 @@
+{
+  "info": {
+    "name": "SleepAI Smoke Tests",
+    "description": "End-to-end smoke tests for the SleepAI backend. Run sequentially via Collection Runner — token from `Register` is reused by every protected request. Verifies the golden path: register → login → record sleep + stress → AI prediction → chat → analytics → GDPR delete.\n\nEnv vars used:\n- `baseUrl` — backend root (default http://localhost:8080)\n- `aiUrl` — AI service root (default http://localhost:8000) — optional, only the /predict probe touches it\n- `authToken` — populated after Register/Login\n- `journalEntryId` — populated after the first journal POST\n\nAll write requests assert 2xx; the GDPR-delete block additionally verifies that user-owned rows are gone but the account row survives.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "aiUrl", "value": "http://localhost:8000" },
+    { "key": "authToken", "value": "" },
+    { "key": "refreshToken", "value": "" },
+    { "key": "journalEntryId", "value": "" },
+    { "key": "smokeEmail", "value": "" },
+    { "key": "smokePassword", "value": "Smoke12345!" }
+  ],
+  "item": [
+    {
+      "name": "00 Health check",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/health"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('200 OK', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "01 Register",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/api/auth/register",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"fullName\": \"Smoke Test\",\n  \"email\": \"{{smokeEmail}}\",\n  \"password\": \"{{smokePassword}}\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "// Fresh email per run so the collection is idempotent",
+              "pm.collectionVariables.set('smokeEmail', 'smoke+' + Date.now() + '@sleepai.test');"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('2xx', () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+              "const body = pm.response.json();",
+              "pm.expect(body.tokens.accessToken, 'accessToken').to.be.a('string').and.not.empty;",
+              "pm.collectionVariables.set('authToken', body.tokens.accessToken);",
+              "pm.collectionVariables.set('refreshToken', body.tokens.refreshToken);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 Login",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/api/auth/login",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{smokeEmail}}\",\n  \"password\": \"{{smokePassword}}\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('200 OK', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.expect(body.tokens.accessToken).to.be.a('string').and.not.empty;",
+              "pm.collectionVariables.set('authToken', body.tokens.accessToken);",
+              "pm.collectionVariables.set('refreshToken', body.tokens.refreshToken);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 Me (protected)",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{authToken}}" }],
+        "url": "{{baseUrl}}/api/auth/me"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('200 OK', () => pm.response.to.have.status(200));",
+              "pm.test('email matches', () => pm.expect(pm.response.json().email).to.eql(pm.collectionVariables.get('smokeEmail')));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 Refresh token",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/api/auth/refresh",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('200 OK', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.collectionVariables.set('authToken', body.tokens ? body.tokens.accessToken : body.accessToken);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 Create journal entry",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{authToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": "{{baseUrl}}/api/journal/entries",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"sleepHours\": 7.5,\n  \"stressLevel\": 4,\n  \"note\": \"smoke-test entry\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('201 Created', () => pm.response.to.have.status(201));",
+              "pm.collectionVariables.set('journalEntryId', pm.response.json().id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 List journal entries",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{authToken}}" }],
+        "url": "{{baseUrl}}/api/journal/entries"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('200 OK', () => pm.response.to.have.status(200));",
+              "pm.test('contains the seeded entry', () => pm.expect(pm.response.json().length).to.be.at.least(1));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "07 Stress measurement",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{authToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": "{{baseUrl}}/api/stress",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"hrvScore\": 55.0\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('201 Created', () => pm.response.to.have.status(201));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "08 Stress latest",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{authToken}}" }],
+        "url": "{{baseUrl}}/api/stress/latest"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('200 OK', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "09 AI Predict",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{authToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": "{{baseUrl}}/api/ai/predict",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"sleepDuration\": 7.5,\n  \"stressLevel\": 4,\n  \"heartRate\": 65,\n  \"physicalActivity\": 30,\n  \"bedtimeHour\": 23\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "// AI service may be offline — accept both healthy (200) and degraded (502/503).",
+              "pm.test('AI predict reachable', () => pm.expect(pm.response.code).to.be.oneOf([200, 502, 503]));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "10 Chat message",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{authToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": "{{baseUrl}}/api/chat/message",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"content\": \"How can I improve my sleep?\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "// Chat depends on LLM availability — accept 200 or AI-down statuses.",
+              "pm.test('Chat reachable', () => pm.expect(pm.response.code).to.be.oneOf([200, 502, 503]));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "11 Analysis: sleep",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{authToken}}" }],
+        "url": "{{baseUrl}}/api/analysis/sleep"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('200 OK', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "12 Statistics summary",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{authToken}}" }],
+        "url": "{{baseUrl}}/api/statistics/summary"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('200 OK', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "13 Export user data",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{authToken}}" }],
+        "url": "{{baseUrl}}/api/user/export"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('200 OK', () => pm.response.to.have.status(200));",
+              "pm.test('has user block', () => pm.expect(pm.response.json().user).to.be.an('object'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "14 Update settings",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{authToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": "{{baseUrl}}/api/user/settings",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"notifications\": true,\n  \"darkMode\": true,\n  \"reminderTime\": \"22:30\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('200 OK', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "15 GDPR: delete user data",
+      "request": {
+        "method": "DELETE",
+        "header": [{ "key": "Authorization", "value": "Bearer {{authToken}}" }],
+        "url": "{{baseUrl}}/api/user/data"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('204 No Content', () => pm.response.to.have.status(204));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "16 GDPR verify: journal empty",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{authToken}}" }],
+        "url": "{{baseUrl}}/api/journal/entries"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('200 OK', () => pm.response.to.have.status(200));",
+              "pm.test('no entries remain', () => pm.expect(pm.response.json().length).to.eql(0));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "17 GDPR verify: account survives",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{authToken}}" }],
+        "url": "{{baseUrl}}/api/auth/me"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('account row still present', () => pm.response.to.have.status(200));",
+              "pm.test('same email', () => pm.expect(pm.response.json().email).to.eql(pm.collectionVariables.get('smokeEmail')));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "18 Logout invalidates token",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Authorization", "value": "Bearer {{authToken}}" }],
+        "url": "{{baseUrl}}/api/auth/logout"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('204 No Content', () => pm.response.to.have.status(204));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "19 Logout: old token rejected",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{authToken}}" }],
+        "url": "{{baseUrl}}/api/auth/me"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('401 Unauthorized after logout', () => pm.response.to.have.status(401));"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

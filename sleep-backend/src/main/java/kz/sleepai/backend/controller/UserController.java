@@ -1,21 +1,20 @@
 package kz.sleepai.backend.controller;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import kz.sleepai.backend.model.User;
+import kz.sleepai.backend.repository.ChatMessageRepository;
 import kz.sleepai.backend.repository.JournalEntryRepository;
+import kz.sleepai.backend.repository.PasswordResetTokenRepository;
+import kz.sleepai.backend.repository.RecommendationRepository;
 import kz.sleepai.backend.repository.SleepSessionRepository;
 import kz.sleepai.backend.repository.StressDataRepository;
 import kz.sleepai.backend.repository.UserRepository;
 
 import java.security.Principal;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -27,16 +26,9 @@ public class UserController {
     private final JournalEntryRepository journalEntryRepository;
     private final SleepSessionRepository sleepSessionRepository;
     private final StressDataRepository stressDataRepository;
-
-    // ─── GET /api/user/all (Admin/Pagination) ───────────────────────────────
-    @GetMapping("/all")
-    public ResponseEntity<?> getAllUsers(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size
-    ) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
-        return ResponseEntity.ok(userRepository.findAll(pageable));
-    }
+    private final ChatMessageRepository chatMessageRepository;
+    private final RecommendationRepository recommendationRepository;
+    private final PasswordResetTokenRepository passwordResetTokenRepository;
 
     // ─── GET /api/user/settings ─────────────────────────────────────────────
     @GetMapping("/settings")
@@ -75,12 +67,26 @@ public class UserController {
     }
 
     // ─── GET /api/user/export ────────────────────────────────────────────────
+    // readOnly = true: Hibernate skips dirty-checking flush, so the `setUser(null)`
+    // detach trick below cannot accidentally persist user_id = null on the rows.
     @GetMapping("/export")
+    @Transactional(readOnly = true)
     public ResponseEntity<?> exportData(Principal principal) {
         if (principal == null) return ResponseEntity.status(401).build();
 
         User user = userRepository.findByEmail(principal.getName()).orElse(null);
         if (user == null) return ResponseEntity.notFound().build();
+
+        var journals = journalEntryRepository.findAllByUser_EmailOrderByDateDesc(user.getEmail());
+        var sessions = sleepSessionRepository.findAllByUser_EmailOrderByStartTimeDesc(user.getEmail());
+        var stress   = stressDataRepository.findByUserIdOrderByTimestampDesc(user.getId());
+
+        // Drop the lazy User reference on each row. With `open-in-view=false` Jackson
+        // serializes after the JPA session closes, and an unresolved proxy throws.
+        // Owner is already in the top-level "user" block — per-row userId is redundant.
+        journals.forEach(e -> e.setUser(null));
+        sessions.forEach(s -> s.setUser(null));
+        stress.forEach(s -> s.setUser(null));
 
         Map<String, Object> export = new HashMap<>();
         export.put("user", Map.of(
@@ -89,14 +95,20 @@ public class UserController {
                 "email", user.getEmail(),
                 "createdAt", user.getCreatedAt()
         ));
-        export.put("journalEntries", journalEntryRepository.findAllByUser_EmailOrderByDateDesc(user.getEmail()));
-        export.put("sleepSessions", sleepSessionRepository.findAllByUser_EmailOrderByStartTimeDesc(user.getEmail()));
-        export.put("stressData", stressDataRepository.findByUserIdOrderByTimestampDesc(user.getId()));
+        export.put("journalEntries", journals);
+        export.put("sleepSessions", sessions);
+        export.put("stressData", stress);
 
         return ResponseEntity.ok(export);
     }
 
     // ─── DELETE /api/user/data ───────────────────────────────────────────────
+    /**
+     * GDPR-style erase of all user-generated data while keeping the account row.
+     * Order matters: dependents first (recommendations reference sleep_sessions),
+     * then owners. PasswordResetToken is keyed by email, not user_id, so we wipe
+     * those too — otherwise stale reset links survive a data deletion.
+     */
     @DeleteMapping("/data")
     @Transactional
     public ResponseEntity<Void> deleteData(Principal principal) {
@@ -105,12 +117,16 @@ public class UserController {
         User user = userRepository.findByEmail(principal.getName()).orElse(null);
         if (user == null) return ResponseEntity.notFound().build();
 
+        recommendationRepository.deleteAll(
+                recommendationRepository.findAllBySession_User_Email(user.getEmail()));
+        chatMessageRepository.deleteByUser_Email(user.getEmail());
         journalEntryRepository.deleteAll(
                 journalEntryRepository.findAllByUser_EmailOrderByDateDesc(user.getEmail()));
         sleepSessionRepository.deleteAll(
                 sleepSessionRepository.findAllByUser_EmailOrderByStartTimeDesc(user.getEmail()));
         stressDataRepository.deleteAll(
                 stressDataRepository.findByUserIdOrderByTimestampDesc(user.getId()));
+        passwordResetTokenRepository.deleteByEmail(user.getEmail());
 
         return ResponseEntity.noContent().build();
     }

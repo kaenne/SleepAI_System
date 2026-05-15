@@ -159,8 +159,12 @@ class SleepDataInput(BaseModel):
     caffeineIntake: Optional[float] = Field(default=0.0, ge=0, le=2000)
     alcoholIntake: Optional[float] = Field(default=0.0, ge=0, le=50)
     exerciseFrequency: Optional[float] = Field(default=3.0, ge=0, le=7)
-    age: Optional[float] = Field(default=30.0, ge=10, le=120)
-    gender: Optional[float] = Field(default=0.0, ge=0, le=1)
+    # age / gender / bmiCategory are None when the user hasn't filled the AI Profile
+    # editor. Defaults are NOT applied here — the model can handle NaN via
+    # HistGradientBoosting, and a real NaN is more honest than a fake age=30.
+    age: Optional[float] = Field(default=None, ge=10, le=120)
+    gender: Optional[float] = Field(default=None, ge=0, le=1)
+    bmiCategory: Optional[float] = Field(default=None, ge=0, le=2)
     bedtimeHour: Optional[float] = Field(default=23.0, ge=0, le=23)
 
 class SleepFactor(BaseModel):
@@ -223,8 +227,12 @@ def health():
 @limiter.limit("60/minute")
 def predict_sleep_quality(request: Request, data: SleepDataInput):
     try:
-        age          = float(data.age)
-        gender       = float(data.gender)
+        # NaN passes through HistGradientBoosting natively. The "Pol model 2" path
+        # for phases below also needs numeric age/gender, so we coerce only for
+        # the engineered features (age_sq), keeping NaN in the quality DataFrame.
+        age          = float(data.age) if data.age is not None else np.nan
+        gender       = float(data.gender) if data.gender is not None else np.nan
+        bmi          = float(data.bmiCategory) if data.bmiCategory is not None else np.nan
         bedtime_hour = float(data.bedtimeHour)
 
         # Модель 1: качество
@@ -233,7 +241,7 @@ def predict_sleep_quality(request: Request, data: SleepDataInput):
             data.physicalActivity, data.caffeineIntake, data.alcoholIntake,
             data.exerciseFrequency,
             age, gender,
-            np.nan, np.nan, np.nan,
+            bmi, np.nan, np.nan,
             bedtime_hour,
         ]], columns=FEATURES_Q)
         
@@ -244,11 +252,12 @@ def predict_sleep_quality(request: Request, data: SleepDataInput):
             score = 100.0 - (data.stressLevel * 4.0) - abs(data.sleepDuration - 8.0) * 5.0
             quality = round(max(0.0, min(100.0, float(score))), 1)
 
-        # Модель 2: фазы
+        # Модель 2: фазы. age_sq becomes NaN when age is missing — same behaviour
+        # as raw age/gender above (HGB handles it).
         bedtime_sin = np.sin(2 * np.pi * bedtime_hour / 24)
         bedtime_cos = np.cos(2 * np.pi * bedtime_hour / 24)
         sleep_sq    = data.sleepDuration ** 2
-        age_sq      = age ** 2
+        age_sq      = (age ** 2) if not np.isnan(age) else np.nan
         raw_p = pd.DataFrame([[
             data.sleepDuration, data.stressLevel, data.heartRate,
             data.physicalActivity, data.caffeineIntake,

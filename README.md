@@ -158,14 +158,30 @@ npx expo start
 ## Тесты
 
 ```bash
-# Backend (JUnit 5 + Mockito + MockMvc)
+# Backend (JUnit 5 + Mockito + MockMvc + Testcontainers)
 cd sleep-backend
 ./mvnw test
-# → 102 теста, 0 ошибок
+# → 102 unit/slice теста + integration-suite (AuthIntegrationTest)
+#   Integration-тесты поднимают реальный PostgreSQL через Testcontainers и автоматически
+#   пропускаются, если Docker недоступен (см. @EnabledIf isDockerAvailable).
 
 # AI-сервис
 cd sleep-ai
 pytest  # если настроены тесты
+```
+
+### Smoke-тесты API (Postman)
+
+В `docs/SleepAI-Smoke-Tests.postman_collection.json` лежит готовый набор end-to-end
+запросов, проходящих весь golden path: регистрация → логин → запись сна → стресс →
+AI-предсказание → чат → аналитика → GDPR-удаление → logout. Импортируется в Postman /
+Insomnia / Newman; запускается через Collection Runner. Каждый шаг содержит assert на
+HTTP-статус, токены и состояние данных после удаления.
+
+```bash
+# через Newman (CLI) на запущенном бэкенде:
+newman run docs/SleepAI-Smoke-Tests.postman_collection.json \
+  --env-var baseUrl=http://localhost:8080
 ```
 
 ## Структура проекта
@@ -206,3 +222,33 @@ SleepAI_System/
 | `AI_SERVICE_URL` | — | URL AI-сервиса (по умолчанию http://ai:8000 в Docker) |
 | `UPLOAD_DIR` | — | Директория для загрузок (по умолчанию ./uploads) |
 | `EXPO_PUBLIC_API_BASE_URL` | — | URL бэкенда для мобильного приложения |
+
+## Ограничения и план развития
+
+Проект разработан в рамках дипломной работы и сознательно ограничен по объёму. Ниже —
+честный перечень текущих компромиссов и направлений для дальнейшего развития.
+
+### Известные ограничения
+
+| Область | Текущее состояние | Почему так | Что нужно для prod |
+|---|---|---|---|
+| **HRV / биометрия** | HRV-значения эмулируются на клиенте ([`use-stress-monitor.ts:117`](sleep-mobile/hooks/use-stress-monitor.ts#L117) — `Simulate HRV measurement`). Реальные данные с датчиков не считываются. | Интеграция с Apple HealthKit / Android Health Connect требует подписанных native-модулей и dev-аккаунтов в App Store / Play Console — это вне рамок диплома. | Подключить `react-native-health` и `react-native-health-connect`, заменить `measureHrv()` на чтение последнего R-R интервала. |
+| **Heart rate fallback** | При запросе AI-предсказания всегда отправляется `heartRate: 65 bpm` ([`constants/sleep.ts`](sleep-mobile/constants/sleep.ts), `DEFAULT_HEART_RATE_BPM`). | Реального источника пульса нет (см. выше); 65 — центроид training-data в зоне здорового взрослого. | После HealthKit/Health Connect — заменить на live-чтение. |
+| **Rate limiter** | In-memory (`ConcurrentHashMap` в [`LoginRateLimitFilter.java`](sleep-backend/src/main/java/kz/sleepai/backend/config/LoginRateLimitFilter.java)). Состояние сбрасывается при рестарте, не шарится между инстансами. | Внешний Redis ради 5 req/min — overkill для одиночного инстанса диплома. | Перенести счётчики в Redis при горизонтальном масштабировании. |
+| **Миграции БД** | Используется `spring.jpa.hibernate.ddl-auto=update`. Схема меняется автоматически по сущностям. | Flyway / Liquibase усложнили бы первый запуск без выигрыша на одной БД. | Перед публичным релизом — заморозить текущую схему как `V1__init.sql`, переключить ddl-auto на `validate`. |
+| **AI-сервис** | Запускается отдельным процессом; деградирует мягко (бэкенд возвращает 502/503), но без отдельного circuit breaker. | Resilience4j добавил бы зависимость ради одного интеграционного хука. | Обернуть `AiPredictionService` в Resilience4j с CircuitBreaker + Retry + Timeout. |
+| **Light mode** | Компоненты содержат `isDark ? Brand.* : '#hex'` фолбэки, но app по факту dark-only. | Light-палитра не утверждена дизайном; токены частично совпадают со старыми хардкодами. | Утвердить light-палитру (или удалить фолбэки и зафиксировать dark-only). |
+| **i18n полнота** | RU / EN / KZ покрыты для всех UI-строк. Контекст запросов к LLM локализован ([`chat.tsx`](sleep-mobile/app/(tabs)/chat.tsx) — `contextSleep/contextStress`). Системные ошибки backend всё ещё на английском (`"User not found"` и т.д.). | Backend и i18n-bundle мобилки никогда не пересекаются на этапе текста ошибок. | Перевести коды ошибок (`ERR_USER_NOT_FOUND`) — клиент сам подберёт строку из бандла. |
+| **OAuth-провайдеры** | Только Google. | Apple Sign-In требует платный Apple Developer + переподпись бандла. | Добавить Apple Sign-In перед публикацией в App Store (требование Apple, если есть любой OAuth). |
+| **Тесты UI** | Только TypeScript-проверка типов; нет Detox / Maestro для E2E. | Setup E2E с эмуляторами в CI — отдельный двухдневный пайплайн. | Maestro flow на golden path для регресс-тестов перед релизами. |
+
+### Roadmap (приоритеты v1.1+)
+
+1. **Реальная биометрия** — HealthKit / Health Connect, замена эмуляции HRV и hardcoded `heartRate`.
+2. **Push-уведомления о сне** — Firebase Cloud Messaging для backend-side reminders (сейчас только локальные через `expo-notifications`).
+3. **Sleep stages timeline** — переход от категориальной модели (REM/Deep/Awakenings) к таймлайну фаз по часам ночи (нужна модель на временных рядах).
+4. **Семейные/командные аккаунты** — sharing-mode для пар и коучей. Требует RBAC на бэкенде.
+5. **Wearables** — Mi Band / Garmin / Fitbit через Health Connect bridge.
+6. **CI/CD до прод** — текущий GitHub Actions гоняет тесты; не хватает автоматического build + push в App Store / Play Store / DigitalOcean.
+7. **Observability** — Prometheus метрики `/actuator/prometheus`, дашборд по latency AI-сервиса и rate-limit hit rate.
+8. **Flyway-миграции** — заморозка схемы и контроль изменений через PR.

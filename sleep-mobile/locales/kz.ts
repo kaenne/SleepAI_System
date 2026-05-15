@@ -90,6 +90,8 @@ export const kz: Translations = {
     aiAnalysisSubtitle: 'Таң · түнгі есеп',
     lastNightTitle: 'Өткен түн',
     noEntries: 'Жазбалар жоқ. Бүгінгі ұйқыны қосыңыз, AI Тренер суретті жасай бастайды.',
+    invalidSleepHours: 'Ұйқы сағатын {{min}}–{{max}} аралығында енгізіңіз.',
+    invalidStress: 'Стресс деңгейі 1–10 аралығында болуы керек.',
   },
   modal: {
     title: 'Ұйқы жазбасы',
@@ -204,6 +206,9 @@ export const kz: Translations = {
     qr_schedule_text: 'Ұйқы режимін қалай орнатуға болады?',
     qr_snoring_text: 'Мен қорылдаймын — не істеу керек?',
     qr_melatonin_text: 'Мелатонин қабылдау керек пе?',
+    contextSleep: 'ұйқы',
+    contextStress: 'стресс',
+    contextHourUnit: 'сағ',
   },
   profile: {
     title: 'Профиль',
@@ -249,6 +254,7 @@ export const kz: Translations = {
     ach_streak7: '7 күн қатарынан',
     ach_8h: '8 сағат ұйқы',
     ach_20: '20 жазба',
+    nameSyncFailed: 'Аты жергілікті сақталды, бірақ серверге синхрондау сәтсіз аяқталды.',
   },
   settings: {
     title: 'Баптаулар',
@@ -293,6 +299,7 @@ export const kz: Translations = {
     allowNotificationsMsg: 'Телефон баптауларынан хабарландыруларға рұқсат беріңіз.',
     reminderSet: 'Еске салу {{time}} уақытына күн сайын орнатылды',
     clearDone: 'Барлық деректер тазаланды',
+    clearServerFailed: 'Жергілікті деректер өшірілді, бірақ серверден өшіру сәтсіз аяқталды. Кейінірек қайталаңыз.',
     dailyReminder: 'Ұйықтауға күн сайын еске салу',
     timePickerTitle: '⏰ Еске салу уақыты',
     backendInfo: 'Бэкенд URL .env файлында EXPO_PUBLIC_API_BASE_URL ретінде бапталанған',

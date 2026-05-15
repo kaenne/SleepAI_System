@@ -92,6 +92,7 @@ function SettingRow({
 
 // ── Account header card ──────────────────────────────────────────────────────
 function AccountCard({ isAuthenticated, name, email }: { isAuthenticated: boolean; name?: string; email?: string }) {
+  const { t } = useTranslation();
   const initials = React.useMemo(() => {
     if (!name) return 'U';
     const p = name.trim().split(' ');
@@ -112,7 +113,7 @@ function AccountCard({ isAuthenticated, name, email }: { isAuthenticated: boolea
         </View>
         <View style={styles.accountText}>
           <View style={styles.accountTitleRow}>
-            <ThemedText style={styles.accountName}>{isGuest ? 'Гость' : name}</ThemedText>
+            <ThemedText style={styles.accountName}>{isGuest ? t('settings.guest') : name}</ThemedText>
             {isGuest ? (
               <View style={styles.offlineBadge}>
                 <ThemedText style={styles.offlineBadgeText}>OFFLINE</ThemedText>
@@ -120,7 +121,7 @@ function AccountCard({ isAuthenticated, name, email }: { isAuthenticated: boolea
             ) : null}
           </View>
           <ThemedText style={styles.accountSub} numberOfLines={1}>
-            {isGuest ? 'Войдите для синхронизации данных' : email}
+            {isGuest ? t('settings.loginPrompt') : email}
           </ThemedText>
         </View>
         <Ico.ChevronRight size={18} color={Brand.textMuted} />
@@ -198,11 +199,20 @@ export default function SettingsScreen() {
         text: t('settings.clearDataBtn'),
         style: 'destructive',
         onPress: async () => {
+          let serverFailed = false;
           if (isAuthenticated) {
-            try { await api.deleteUserData(); } catch {}
+            try {
+              await api.deleteUserData();
+            } catch {
+              serverFailed = true;
+            }
           }
           await clearAll();
-          Alert.alert(t('common.done'), t('settings.clearDone'));
+          if (serverFailed) {
+            Alert.alert(t('common.error'), t('settings.clearServerFailed'));
+          } else {
+            Alert.alert(t('common.done'), t('settings.clearDone'));
+          }
         },
       },
     ]);

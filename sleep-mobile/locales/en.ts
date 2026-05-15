@@ -90,6 +90,8 @@ export const en: Translations = {
     aiAnalysisSubtitle: 'Morning · night report',
     lastNightTitle: 'Last night',
     noEntries: 'No entries yet. Add today\'s sleep and AI Coach will start building a picture.',
+    invalidSleepHours: 'Please enter sleep hours between {{min}} and {{max}}.',
+    invalidStress: 'Stress level must be between 1 and 10.',
   },
   modal: {
     title: 'Sleep Entry',
@@ -204,6 +206,9 @@ export const en: Translations = {
     qr_schedule_text: 'How to fix my sleep schedule?',
     qr_snoring_text: 'I snore — what should I do?',
     qr_melatonin_text: 'Should I take melatonin?',
+    contextSleep: 'sleep',
+    contextStress: 'stress',
+    contextHourUnit: 'h',
   },
   profile: {
     title: 'Profile',
@@ -249,6 +254,7 @@ export const en: Translations = {
     ach_streak7: '7 Days Streak',
     ach_8h: '8h Sleep',
     ach_20: '20 Entries',
+    nameSyncFailed: 'Name saved locally, but failed to sync with the server.',
   },
   settings: {
     title: 'Settings',
@@ -293,6 +299,7 @@ export const en: Translations = {
     allowNotificationsMsg: 'Please allow notifications in your phone settings.',
     reminderSet: 'Reminder set for {{time}} daily',
     clearDone: 'All data cleared',
+    clearServerFailed: 'Local data cleared, but the server copy could not be deleted. Try again later.',
     dailyReminder: 'Daily reminder to go to sleep',
     timePickerTitle: '⏰ Reminder Time',
     backendInfo: 'Backend URL is configured in .env as EXPO_PUBLIC_API_BASE_URL',

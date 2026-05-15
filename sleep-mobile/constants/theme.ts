@@ -43,7 +43,7 @@ export const tonal = (hex: string) => `${hex}1f`;
 export const tonalBorder = (hex: string) => `${hex}33`;
 
 // ── Theme map (kept for backward compatibility) ──────────────────────────────
-type ThemeTokens = {
+export type ThemeTokens = {
   text: string;
   textSecondary: string;
   background: string;

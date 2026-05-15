@@ -13,7 +13,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors, BorderRadius, Spacing } from '@/constants/theme';
+import { Brand, Colors, BorderRadius, Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { scheduleWakeUpAlarm, cancelWakeUpAlarm } from '@/hooks/use-notifications';
 import { api } from '@/services/api';
@@ -30,7 +30,7 @@ type SleepSession = {
 };
 
 export function SleepTimer() {
-  const colorScheme = useColorScheme() ?? 'light';
+  const colorScheme = useColorScheme() ?? 'dark';
   const isDark = colorScheme === 'dark';
   const colors = Colors[colorScheme];
   const { t } = useTranslation();
@@ -101,7 +101,7 @@ export function SleepTimer() {
         setSession(JSON.parse(stored));
       }
     } catch (e) {
-      console.error('Failed to load session:', e);
+      console.warn('Failed to load session:', e);
     }
   };
   
@@ -122,7 +122,7 @@ export function SleepTimer() {
         await scheduleWakeUpAlarm(alarmHour, alarmMinute, t('notifications.wakeupTitle'), t('notifications.wakeupBody'));
       }
     } catch (e) {
-      console.error('Failed to start session:', e);
+      console.warn('Failed to start session:', e);
     } finally {
       setIsLoading(false);
     }
@@ -184,18 +184,18 @@ export function SleepTimer() {
   };
   
   return (
-    <View style={[styles.container, { backgroundColor: isDark ? '#1E1E2D' : '#FFFFFF', borderColor: isDark ? '#2C2C3E' : '#E5E7EB' }]}>
+    <View style={[styles.container, { backgroundColor: isDark ? Brand.surface : '#FFFFFF', borderColor: isDark ? Brand.border : '#E5E7EB' }]}>
       {/* Header row */}
       <View style={styles.header}>
         <View style={[styles.headerIcon, { backgroundColor: isDark ? '#1A2A4A' : '#EFF6FF' }]}>
           <ThemedText style={{ fontSize: 18 }}>🌙</ThemedText>
         </View>
         <View style={{ flex: 1 }}>
-          <ThemedText style={[styles.title, { color: isDark ? '#E2D8F0' : '#1F2937' }]}>
+          <ThemedText style={[styles.title, { color: isDark ? Brand.textPrimary : '#1F2937' }]}>
             {session?.isActive ? t('timer.titleActive') : t('timer.titleInactive')}
           </ThemedText>
           {session?.isActive && (
-            <ThemedText style={[styles.subtitle, { color: isDark ? '#6B7280' : '#9CA3AF' }]}>
+            <ThemedText style={[styles.subtitle, { color: isDark ? Brand.textMuted : '#9CA3AF' }]}>
               {t('timer.startedAt').replace('{{time}}', formatStartTime())}
               {session.wakeUpHour !== undefined
                 ? `  ·  ${t('timer.alarm')} ${String(session.wakeUpHour).padStart(2,'0')}:${String(session.wakeUpMinute ?? 0).padStart(2,'0')}`
@@ -215,7 +215,7 @@ export function SleepTimer() {
         <Animated.View entering={FadeIn} style={styles.activeSession}>
           {/* Big blue timer */}
           <Animated.View style={[styles.timerContainer, animatedStyle]}>
-            <ThemedText style={[styles.timer, { color: '#7eb6ff' }]}>
+            <ThemedText style={[styles.timer, { color: Brand.info }]}>
               {elapsed}
             </ThemedText>
           </Animated.View>
@@ -224,7 +224,7 @@ export function SleepTimer() {
           <Pressable
             onPress={handleWakeUp}
             disabled={isLoading}
-            style={[styles.wakeBtn, { backgroundColor: '#7eb6ff', opacity: isLoading ? 0.7 : 1 }]}
+            style={[styles.wakeBtn, { backgroundColor: Brand.info, opacity: isLoading ? 0.7 : 1 }]}
           >
             <ThemedText style={{ fontSize: 20, marginRight: 8 }}>⏰</ThemedText>
             <ThemedText style={styles.wakeBtnText}>
@@ -234,7 +234,7 @@ export function SleepTimer() {
         </Animated.View>
       ) : (
         <Animated.View entering={FadeIn} style={styles.inactiveSession}>
-          <ThemedText style={[styles.description, { color: isDark ? '#6B7280' : '#9CA3AF' }]}>
+          <ThemedText style={[styles.description, { color: isDark ? Brand.textMuted : '#9CA3AF' }]}>
             {t('timer.startManually')}
           </ThemedText>
 
@@ -243,8 +243,8 @@ export function SleepTimer() {
             disabled={isLoading}
             style={[styles.startBtn, { backgroundColor: isDark ? '#1E3A2E' : '#DCFCE7', opacity: isLoading ? 0.7 : 1 }]}
           >
-            <IconSymbol name="moon.fill" size={18} color="#4ADE80" />
-            <ThemedText style={[styles.startBtnText, { color: '#4ADE80' }]}>
+            <IconSymbol name="moon.fill" size={18} color={Brand.good} />
+            <ThemedText style={[styles.startBtnText, { color: Brand.good }]}>
               {isLoading ? t('timer.starting') : t('timer.startSession')}
             </ThemedText>
           </Pressable>
@@ -254,46 +254,46 @@ export function SleepTimer() {
       {/* ── Будильник модалка ── */}
       <Modal visible={showAlarmPicker} transparent animationType="fade" onRequestClose={() => setShowAlarmPicker(false)}>
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalCard, { backgroundColor: isDark ? '#1E1E2D' : '#FFFFFF', borderColor: isDark ? '#2C2C3E' : '#E5E7EB' }]}>
-            <ThemedText style={[styles.modalTitle, { color: isDark ? '#E2D8F0' : '#1F2937' }]}>{t('timer.alarmTitle')}</ThemedText>
-            <ThemedText style={[styles.hint, { color: isDark ? '#6B7280' : '#9CA3AF', marginBottom: Spacing.md }]}>
+          <View style={[styles.modalCard, { backgroundColor: isDark ? Brand.surface : '#FFFFFF', borderColor: isDark ? Brand.border : '#E5E7EB' }]}>
+            <ThemedText style={[styles.modalTitle, { color: isDark ? Brand.textPrimary : '#1F2937' }]}>{t('timer.alarmTitle')}</ThemedText>
+            <ThemedText style={[styles.hint, { color: isDark ? Brand.textMuted : '#9CA3AF', marginBottom: Spacing.md }]}>
               {t('timer.alarmHint')}
             </ThemedText>
 
             <View style={styles.timeRow}>
               <View style={styles.timeColumn}>
-                <Pressable style={[styles.timeBtn, { backgroundColor: isDark ? '#2C2C3E' : '#F3F4F6' }]} onPress={() => setAlarmHour(h => (h + 1) % 24)}>
+                <Pressable style={[styles.timeBtn, { backgroundColor: isDark ? Brand.border : '#F3F4F6' }]} onPress={() => setAlarmHour(h => (h + 1) % 24)}>
                   <IconSymbol name="chevron.up" size={20} color={colors.tint} />
                 </Pressable>
-                <View style={[styles.timeDisplay, { backgroundColor: isDark ? '#151522' : '#F9FAFB', borderColor: isDark ? '#2C2C3E' : '#E5E7EB' }]}>
-                  <ThemedText style={[styles.timeValue, { color: '#7eb6ff' }]}>{String(alarmHour).padStart(2,'0')}</ThemedText>
+                <View style={[styles.timeDisplay, { backgroundColor: isDark ? Brand.background : '#F9FAFB', borderColor: isDark ? Brand.border : '#E5E7EB' }]}>
+                  <ThemedText style={[styles.timeValue, { color: Brand.info }]}>{String(alarmHour).padStart(2,'0')}</ThemedText>
                 </View>
-                <Pressable style={[styles.timeBtn, { backgroundColor: isDark ? '#2C2C3E' : '#F3F4F6' }]} onPress={() => setAlarmHour(h => (h - 1 + 24) % 24)}>
+                <Pressable style={[styles.timeBtn, { backgroundColor: isDark ? Brand.border : '#F3F4F6' }]} onPress={() => setAlarmHour(h => (h - 1 + 24) % 24)}>
                   <IconSymbol name="chevron.down" size={20} color={colors.tint} />
                 </Pressable>
               </View>
-              <ThemedText style={[styles.timeColon, { color: '#7eb6ff' }]}>:</ThemedText>
+              <ThemedText style={[styles.timeColon, { color: Brand.info }]}>:</ThemedText>
               <View style={styles.timeColumn}>
-                <Pressable style={[styles.timeBtn, { backgroundColor: isDark ? '#2C2C3E' : '#F3F4F6' }]} onPress={() => setAlarmMinute(m => (m + 5) % 60)}>
+                <Pressable style={[styles.timeBtn, { backgroundColor: isDark ? Brand.border : '#F3F4F6' }]} onPress={() => setAlarmMinute(m => (m + 5) % 60)}>
                   <IconSymbol name="chevron.up" size={20} color={colors.tint} />
                 </Pressable>
-                <View style={[styles.timeDisplay, { backgroundColor: isDark ? '#151522' : '#F9FAFB', borderColor: isDark ? '#2C2C3E' : '#E5E7EB' }]}>
-                  <ThemedText style={[styles.timeValue, { color: '#7eb6ff' }]}>{String(alarmMinute).padStart(2,'0')}</ThemedText>
+                <View style={[styles.timeDisplay, { backgroundColor: isDark ? Brand.background : '#F9FAFB', borderColor: isDark ? Brand.border : '#E5E7EB' }]}>
+                  <ThemedText style={[styles.timeValue, { color: Brand.info }]}>{String(alarmMinute).padStart(2,'0')}</ThemedText>
                 </View>
-                <Pressable style={[styles.timeBtn, { backgroundColor: isDark ? '#2C2C3E' : '#F3F4F6' }]} onPress={() => setAlarmMinute(m => (m - 5 + 60) % 60)}>
+                <Pressable style={[styles.timeBtn, { backgroundColor: isDark ? Brand.border : '#F3F4F6' }]} onPress={() => setAlarmMinute(m => (m - 5 + 60) % 60)}>
                   <IconSymbol name="chevron.down" size={20} color={colors.tint} />
                 </Pressable>
               </View>
             </View>
 
             <View style={styles.modalActions}>
-              <Pressable style={[styles.modalBtn, { backgroundColor: isDark ? '#2C2C3E' : '#F3F4F6' }]}
+              <Pressable style={[styles.modalBtn, { backgroundColor: isDark ? Brand.border : '#F3F4F6' }]}
                 onPress={() => { setShowAlarmPicker(false); startSleep(false); }}>
-                <ThemedText style={{ color: isDark ? '#E2D8F0' : '#374151', fontWeight: '600' }}>{t('timer.noAlarm')}</ThemedText>
+                <ThemedText style={{ color: isDark ? Brand.textPrimary : '#374151', fontWeight: '600' }}>{t('timer.noAlarm')}</ThemedText>
               </Pressable>
-              <Pressable style={[styles.modalBtn, { backgroundColor: '#7eb6ff' }]}
+              <Pressable style={[styles.modalBtn, { backgroundColor: Brand.info }]}
                 onPress={() => { setShowAlarmPicker(false); startSleep(true); }}>
-                <ThemedText style={{ color: '#0a1628', fontWeight: '700' }}>{t('timer.setAlarm')}</ThemedText>
+                <ThemedText style={{ color: Brand.textInverse, fontWeight: '700' }}>{t('timer.setAlarm')}</ThemedText>
               </Pressable>
             </View>
           </View>
@@ -303,9 +303,9 @@ export function SleepTimer() {
       {/* ── Утренняя обратная связь ── */}
       <Modal visible={showFeedback} transparent animationType="fade" onRequestClose={() => stopSleep(null)}>
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalCard, { backgroundColor: isDark ? '#1E1E2D' : '#FFFFFF', borderColor: isDark ? '#2C2C3E' : '#E5E7EB' }]}>
-            <ThemedText style={[styles.modalTitle, { color: isDark ? '#E2D8F0' : '#1F2937' }]}>{t('timer.goodMorning')}</ThemedText>
-            <ThemedText style={[styles.hint, { color: isDark ? '#6B7280' : '#9CA3AF', marginBottom: Spacing.lg }]}>
+          <View style={[styles.modalCard, { backgroundColor: isDark ? Brand.surface : '#FFFFFF', borderColor: isDark ? Brand.border : '#E5E7EB' }]}>
+            <ThemedText style={[styles.modalTitle, { color: isDark ? Brand.textPrimary : '#1F2937' }]}>{t('timer.goodMorning')}</ThemedText>
+            <ThemedText style={[styles.hint, { color: isDark ? Brand.textMuted : '#9CA3AF', marginBottom: Spacing.lg }]}>
               {t('timer.feedbackPrompt')}
             </ThemedText>
 
@@ -326,11 +326,11 @@ export function SleepTimer() {
             )}
 
             <View style={styles.modalActions}>
-              <Pressable style={[styles.modalBtn, { backgroundColor: isDark ? '#2C2C3E' : '#F3F4F6' }]}
+              <Pressable style={[styles.modalBtn, { backgroundColor: isDark ? Brand.border : '#F3F4F6' }]}
                 onPress={() => stopSleep(null)}>
-                <ThemedText style={{ color: isDark ? '#E2D8F0' : '#374151', fontWeight: '600' }}>{t('timer.skip')}</ThemedText>
+                <ThemedText style={{ color: isDark ? Brand.textPrimary : '#374151', fontWeight: '600' }}>{t('timer.skip')}</ThemedText>
               </Pressable>
-              <Pressable style={[styles.modalBtn, { backgroundColor: feedbackRating ? colors.tint : (isDark ? '#2C2C3E' : '#E5E7EB') }]}
+              <Pressable style={[styles.modalBtn, { backgroundColor: feedbackRating ? colors.tint : (isDark ? Brand.border : '#E5E7EB') }]}
                 disabled={!feedbackRating}
                 onPress={() => stopSleep(feedbackRating)}>
                 <ThemedText style={{ color: '#fff', fontWeight: '700' }}>{t('common.save')}</ThemedText>
@@ -385,12 +385,12 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#4ADE80',
+    backgroundColor: Brand.good,
   },
   liveText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#4ADE80',
+    color: Brand.good,
     letterSpacing: 0.5,
   },
   activeSession: {
@@ -421,7 +421,7 @@ const styles = StyleSheet.create({
   wakeBtnText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#0a1628',
+    color: Brand.textInverse,
   },
   startBtn: {
     flexDirection: 'row',

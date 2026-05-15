@@ -14,6 +14,8 @@ import Animated, {
   useAnimatedProps,
   useAnimatedStyle,
   useSharedValue,
+  withRepeat,
+  withSequence,
   withTiming,
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -23,6 +25,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Card } from '@/components/ui/card';
 import { Ico, type IcoName } from '@/components/ui/ico';
 import { SectionHeader } from '@/components/ui/section-header';
+import { computeSleepScore } from '@/constants/sleep';
 import { Brand, Spacing, Type, tonal, tonalBorder } from '@/constants/theme';
 import { useTranslation } from '@/contexts/i18n-context';
 import { formatSleepHours, useAnalytics } from '@/hooks/use-analytics';
@@ -142,12 +145,14 @@ function SkeletonBox({ height = 14, width = '100%' }: { height?: number; width?:
   const opacity = useSharedValue(0.4);
 
   React.useEffect(() => {
-    opacity.value = withTiming(1, { duration: 600, easing: Easing.inOut(Easing.ease) });
-    const interval = setInterval(() => {
-      opacity.value = withTiming(0.4, { duration: 700 });
-      setTimeout(() => { opacity.value = withTiming(1, { duration: 700 }); }, 700);
-    }, 1400);
-    return () => clearInterval(interval);
+    opacity.value = withRepeat(
+      withSequence(
+        withTiming(1, { duration: 700, easing: Easing.inOut(Easing.ease) }),
+        withTiming(0.4, { duration: 700, easing: Easing.inOut(Easing.ease) }),
+      ),
+      -1,
+      false,
+    );
   }, [opacity]);
 
   const animStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
@@ -238,7 +243,7 @@ export default function StatsScreen() {
   const sleepQualityPercentage = React.useMemo(() => {
     if (sleepAnalysis?.averageQuality) return Math.round(sleepAnalysis.averageQuality);
     if (!localStats.avgSleepHours) return 0;
-    return Math.min(100, Math.round((localStats.avgSleepHours / 8) * 100));
+    return computeSleepScore(localStats.avgSleepHours);
   }, [localStats.avgSleepHours, sleepAnalysis]);
 
   const recent7 = entries.slice(0, 7);
@@ -283,21 +288,21 @@ export default function StatsScreen() {
 
   const weeklyTargetProgress = React.useMemo(() => {
     const avg = sleepAnalysis?.averageSleepHours ?? localStats.avgSleepHours ?? 0;
-    return Math.max(0, Math.min(100, Math.round((avg / 8) * 100)));
+    return computeSleepScore(avg);
   }, [sleepAnalysis, localStats.avgSleepHours]);
 
-  // chart-kit crashes on all-zero / empty arrays — coerce to a tiny non-zero value.
-  const sleepChartData = React.useMemo(() => {
-    const raw = [...Array(7)].map((_, i) => recent7[6 - i]?.sleepHours ?? 0);
-    const hasData = raw.some((v) => v > 0);
-    return hasData ? raw.map((v) => Math.max(v, 0.01)) : [0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01];
-  }, [recent7]);
+  // The `recent7.length === 0` guard below skips the chart entirely. We still
+  // coerce sleepHours to ≥ 0.01 because chart-kit (LineChart) chokes when every
+  // data-point is exactly 0 — the y-axis collapses and bezier curves NaN.
+  const sleepChartData = React.useMemo(
+    () => [...Array(7)].map((_, i) => Math.max(recent7[6 - i]?.sleepHours ?? 0, 0.01)),
+    [recent7],
+  );
 
-  const stressChartData = React.useMemo(() => {
-    const raw = [...Array(7)].map((_, i) => recent7[6 - i]?.stressLevel ?? 0);
-    const hasData = raw.some((v) => v > 0);
-    return hasData ? raw.map((v) => Math.max(v, 0)) : [0, 0, 0, 0, 0, 0, 0];
-  }, [recent7]);
+  const stressChartData = React.useMemo(
+    () => [...Array(7)].map((_, i) => recent7[6 - i]?.stressLevel ?? 0),
+    [recent7],
+  );
 
   // chart-kit accepts hex/rgb in `color` but expects a function returning rgba-ish string.
   // Brand tokens stay literal here — chart-kit doesn't support our token system natively.

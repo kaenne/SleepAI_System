@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as React from 'react';
 import {
+  Alert,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -26,10 +27,11 @@ import { Btn } from '@/components/ui/btn';
 import { Card } from '@/components/ui/card';
 import { Ico, type IcoName } from '@/components/ui/ico';
 import { SectionHeader } from '@/components/ui/section-header';
+import { computeSleepScore } from '@/constants/sleep';
 import { StorageKeys } from '@/constants/storage';
 import { BorderRadius, Brand, Spacing, Type, tonal, tonalBorder } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
-import { LANG_OPTIONS, type Language, useTranslation } from '@/contexts/i18n-context';
+import { useTranslation } from '@/contexts/i18n-context';
 import { useSleepJournal } from '@/hooks/use-sleep-journal';
 import { useUserProfile } from '@/hooks/use-user-profile';
 import { api } from '@/services/api';
@@ -150,7 +152,7 @@ export default function ProfileScreen() {
   const { user, isAuthenticated } = useAuth();
   const { entries, stats } = useSleepJournal();
   const { profile, saveProfile } = useUserProfile();
-  const { t, language, setLanguage } = useTranslation();
+  const { t } = useTranslation();
 
   const achievementBoxSize = Math.floor((screenWidth - Spacing.md * 2 - Spacing.md * 2 - 12 * 2) / 3);
 
@@ -167,9 +169,14 @@ export default function ProfileScreen() {
   }, [profile]);
 
   const saveAiProfile = React.useCallback(async () => {
-    await saveProfile({ age: tempAge ? Number(tempAge) : null, gender: tempGender, bmiCategory: tempBmi });
-    setEditingAiProfile(false);
-  }, [tempAge, tempGender, tempBmi, saveProfile]);
+    try {
+      await saveProfile({ age: tempAge ? Number(tempAge) : null, gender: tempGender, bmiCategory: tempBmi });
+    } catch {
+      Alert.alert(t('common.error'), t('profile.nameSyncFailed'));
+    } finally {
+      setEditingAiProfile(false);
+    }
+  }, [tempAge, tempGender, tempBmi, saveProfile, t]);
 
   const [displayName, setDisplayName] = React.useState('');
   const [editingName, setEditingName] = React.useState(false);
@@ -225,7 +232,11 @@ export default function ProfileScreen() {
     if (name.length > 0 && name.length <= 30) {
       setDisplayName(name);
       await AsyncStorage.setItem(DISPLAY_NAME_KEY, name);
-      try { await api.updateProfile(name); } catch {}
+      try {
+        await api.updateProfile(name);
+      } catch {
+        Alert.alert(t('common.error'), t('profile.nameSyncFailed'));
+      }
     }
     setEditingName(false);
   };
@@ -239,9 +250,7 @@ export default function ProfileScreen() {
     return { icon: 'Moon', color: Brand.accent, label: t('profile.level') };
   }, [entries.length, t]);
 
-  const goalPct = stats.avgSleepHours
-    ? Math.min(100, Math.round((stats.avgSleepHours / 8) * 100))
-    : 0;
+  const goalPct = stats.avgSleepHours ? computeSleepScore(stats.avgSleepHours) : 0;
 
   return (
     <View style={styles.screen}>
@@ -427,36 +436,6 @@ export default function ProfileScreen() {
           </View>
         </Card>
 
-        {/* ── Language selector ───────────────────────────────────── */}
-        <SectionHeader title={t('common.languageTitle')} />
-        <Card variant="bordered" animated={false}>
-          <View style={styles.languageRow}>
-            {LANG_OPTIONS.map((opt) => {
-              const active = language === opt.value;
-              return (
-                <Pressable
-                  key={opt.value}
-                  onPress={() => setLanguage(opt.value as Language)}
-                  style={[
-                    styles.languagePill,
-                    active
-                      ? { backgroundColor: Brand.accentSoft, borderColor: Brand.accentBorder }
-                      : { backgroundColor: Brand.surfaceElevated, borderColor: Brand.border },
-                  ]}
-                >
-                  <ThemedText
-                    style={[
-                      styles.languagePillText,
-                      { color: active ? Brand.accent : Brand.textSecondary, fontWeight: active ? '700' : '500' },
-                    ]}
-                  >
-                    {opt.value.toUpperCase()}
-                  </ThemedText>
-                </Pressable>
-              );
-            })}
-          </View>
-        </Card>
 
         {/* ── Achievements ────────────────────────────────────────── */}
         <SectionHeader title={t('profile.achievements')} />
@@ -702,19 +681,6 @@ const styles = StyleSheet.create({
   aiProfileItem: { flex: 1, alignItems: 'center', gap: 4, paddingVertical: 4 },
   aiProfileLabel: { ...Type.section, color: Brand.textMuted, fontSize: 10 },
   aiProfileValue: { ...Type.monoM, color: Brand.textPrimary, fontSize: 14 },
-
-  // Language selector
-  languageRow: { flexDirection: 'row', gap: 10 },
-  languagePill: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: Spacing.hitArea,
-  },
-  languagePillText: { ...Type.monoS, fontSize: 13, letterSpacing: 0.8 },
 
   // Achievements
   achievementsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'flex-start' },

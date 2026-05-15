@@ -4,7 +4,7 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ThemedText } from '@/components/themed-text';
-import { Spacing } from '@/constants/theme';
+import { Brand, Spacing } from '@/constants/theme';
 import { useTranslation } from '@/contexts/i18n-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
@@ -14,25 +14,25 @@ type AiTipCardProps = {
 };
 
 export function AiTipCard({ tip }: AiTipCardProps) {
-  const colorScheme = useColorScheme() ?? 'light';
+  const colorScheme = useColorScheme() ?? 'dark';
   const isDark = colorScheme === 'dark';
   const colors = Colors[colorScheme];
   const { t } = useTranslation();
 
   return (
     <View style={[styles.card, {
-      backgroundColor: isDark ? '#1E1E2D' : '#FFFFFF',
-      borderColor: isDark ? '#2C2C3E' : '#E5E7EB',
+      backgroundColor: isDark ? Brand.surface : '#FFFFFF',
+      borderColor: isDark ? Brand.border : '#E5E7EB',
     }]}>
       <View style={[styles.accentBar, { backgroundColor: colors.tint }]} />
       <View style={styles.inner}>
         <View style={styles.row}>
-          <View style={[styles.iconWrapper, { backgroundColor: isDark ? '#2D234A' : `${colors.tint}18` }]}>
+          <View style={[styles.iconWrapper, { backgroundColor: isDark ? Brand.accentSoft : `${colors.tint}18` }]}>
             <IconSymbol name="sparkles" size={16} color={colors.tint} />
           </View>
-          <ThemedText style={[styles.title, { color: isDark ? '#E2D8F0' : '#1F2937' }]}>{t('home.aiTipTitle')}</ThemedText>
+          <ThemedText style={[styles.title, { color: isDark ? Brand.textPrimary : '#1F2937' }]}>{t('home.aiTipTitle')}</ThemedText>
         </View>
-        <ThemedText style={[styles.body, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>{tip}</ThemedText>
+        <ThemedText style={[styles.body, { color: isDark ? Brand.textSecondary : '#6B7280' }]}>{tip}</ThemedText>
       </View>
     </View>
   );
@@ -43,7 +43,7 @@ type AiInsightCardProps = {
 };
 
 export function AiInsightCard({ insight }: AiInsightCardProps) {
-  const colorScheme = useColorScheme() ?? 'light';
+  const colorScheme = useColorScheme() ?? 'dark';
   const isDark = colorScheme === 'dark';
   const colors = Colors[colorScheme];
   const { t } = useTranslation();
@@ -51,18 +51,18 @@ export function AiInsightCard({ insight }: AiInsightCardProps) {
   return (
     <Animated.View entering={FadeIn.duration(300)}>
       <View style={[styles.card, {
-        backgroundColor: isDark ? '#1E1E2D' : '#FFFFFF',
-        borderColor: isDark ? '#2C2C3E' : '#E5E7EB',
+        backgroundColor: isDark ? Brand.surface : '#FFFFFF',
+        borderColor: isDark ? Brand.border : '#E5E7EB',
       }]}>
         <View style={[styles.accentBar, { backgroundColor: colors.success }]} />
         <View style={styles.inner}>
           <View style={styles.row}>
-            <View style={[styles.iconWrapper, { backgroundColor: isDark ? '#1A3B2E' : `${colors.success}18` }]}>
+            <View style={[styles.iconWrapper, { backgroundColor: isDark ? `${Brand.good}1f` : `${colors.success}18` }]}>
               <IconSymbol name="bolt.fill" size={16} color={colors.success} />
             </View>
-            <ThemedText style={[styles.title, { color: isDark ? '#E2D8F0' : '#1F2937' }]}>{t('home.aiInsightTitle')}</ThemedText>
+            <ThemedText style={[styles.title, { color: isDark ? Brand.textPrimary : '#1F2937' }]}>{t('home.aiInsightTitle')}</ThemedText>
           </View>
-          <ThemedText style={[styles.body, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>{insight}</ThemedText>
+          <ThemedText style={[styles.body, { color: isDark ? Brand.textSecondary : '#6B7280' }]}>{insight}</ThemedText>
         </View>
       </View>
     </Animated.View>

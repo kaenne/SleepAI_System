@@ -1,5 +1,6 @@
 import * as React from 'react';
 import {
+  Alert,
   Pressable,
   StyleSheet,
   TextInput,
@@ -9,12 +10,14 @@ import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ThemedText } from '@/components/themed-text';
-import { BorderRadius, Colors, Spacing } from '@/constants/theme';
+import { DEFAULT_HEART_RATE_BPM, SLEEP_MAX_HOURS, SLEEP_MIN_HOURS } from '@/constants/sleep';
+import { Brand, BorderRadius, Colors, Spacing, type ThemeTokens } from '@/constants/theme';
 import { useTranslation } from '@/contexts/i18n-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { api } from '@/services/api';
 import { generateInsight, useSleepJournal } from '@/hooks/use-sleep-journal';
+import { useUserProfile } from '@/hooks/use-user-profile';
 
 type AiPrediction = {
   quality: number;
@@ -30,12 +33,13 @@ type Props = {
 };
 
 export function QuickEntryForm({ onEntrySaved }: Props) {
-  const colorScheme = useColorScheme() ?? 'light';
+  const colorScheme = useColorScheme() ?? 'dark';
   const isDark = colorScheme === 'dark';
   const colors = Colors[colorScheme];
   const textColor = useThemeColor({}, 'text');
   const { t } = useTranslation();
   const { addEntry } = useSleepJournal();
+  const { profile } = useUserProfile();
 
   const [sleepHoursText, setSleepHoursText] = React.useState('7.5');
   const [stressLevelText, setStressLevelText] = React.useState('4');
@@ -61,9 +65,14 @@ export function QuickEntryForm({ onEntrySaved }: Props) {
       const response = await api.predictSleepQuality({
         sleepDuration: sleepHours,
         stressLevel: stressLevelNum,
-        heartRate: 65,
+        heartRate: DEFAULT_HEART_RATE_BPM,
         physicalActivity: activity,
         bedtimeHour,
+        // Forward user profile when available so SHAP reflects real demographics
+        // instead of pydantic defaults. Omitted fields → null → NaN in the model.
+        ...(profile.age !== null && { age: profile.age }),
+        ...(profile.gender !== null && { gender: profile.gender }),
+        ...(profile.bmiCategory !== null && { bmiCategory: profile.bmiCategory }),
       });
       setAiPrediction({
         quality: response.predictedQuality,
@@ -90,8 +99,17 @@ export function QuickEntryForm({ onEntrySaved }: Props) {
   const onSave = async () => {
     const sleepHours = Number(sleepHoursText.replace(',', '.'));
     const stressLevelNum = Number(stressLevelText);
-    if (!Number.isFinite(sleepHours) || sleepHours < 0 || sleepHours > 24) return;
-    if (!Number.isFinite(stressLevelNum) || stressLevelNum < 1 || stressLevelNum > 10) return;
+    if (!Number.isFinite(sleepHours) || sleepHours < SLEEP_MIN_HOURS || sleepHours > SLEEP_MAX_HOURS) {
+      Alert.alert(
+        t('common.error'),
+        t('home.invalidSleepHours').replace('{{min}}', String(SLEEP_MIN_HOURS)).replace('{{max}}', String(SLEEP_MAX_HOURS)),
+      );
+      return;
+    }
+    if (!Number.isFinite(stressLevelNum) || stressLevelNum < 1 || stressLevelNum > 10) {
+      Alert.alert(t('common.error'), t('home.invalidStress'));
+      return;
+    }
 
     const saved = await addEntry({ sleepHours, stressLevel: stressLevelNum, note: '' });
     onEntrySaved(generateInsight(saved, t));
@@ -110,10 +128,10 @@ export function QuickEntryForm({ onEntrySaved }: Props) {
 
   return (
     <Animated.View entering={FadeIn.duration(300)}>
-      <View style={[styles.card, { backgroundColor: isDark ? '#1E1E2D' : '#FFFFFF', borderColor: isDark ? '#2C2C3E' : '#E5E7EB' }]}>
+      <View style={[styles.card, { backgroundColor: isDark ? Brand.surface : '#FFFFFF', borderColor: isDark ? Brand.border : '#E5E7EB' }]}>
         {/* Card header */}
         <View style={styles.headerRow}>
-          <View style={[styles.iconWrapper, { backgroundColor: isDark ? '#2D234A' : `${colors.tint}18` }]}>
+          <View style={[styles.iconWrapper, { backgroundColor: isDark ? Brand.accentSoft : `${colors.tint}18` }]}>
             <IconSymbol name="moon.stars.fill" size={18} color={colors.tint} />
           </View>
           <ThemedText style={styles.cardTitle}>{t('home.sleepRecord')}</ThemedText>
@@ -182,9 +200,9 @@ export function QuickEntryForm({ onEntrySaved }: Props) {
         <View style={styles.buttonRow}>
           <Pressable
             onPress={onSave}
-            style={[styles.btnSecondary, { borderColor: isDark ? '#2C2C3E' : '#E5E7EB', backgroundColor: 'transparent' }]}
+            style={[styles.btnSecondary, { borderColor: isDark ? Brand.border : '#E5E7EB', backgroundColor: 'transparent' }]}
           >
-            <ThemedText style={[styles.btnText, { color: isDark ? '#E2D8F0' : colors.text }]}>
+            <ThemedText style={[styles.btnText, { color: isDark ? Brand.textPrimary : colors.text }]}>
               {t('common.save')}
             </ThemedText>
           </Pressable>
@@ -193,7 +211,7 @@ export function QuickEntryForm({ onEntrySaved }: Props) {
             disabled={isPredicting}
             style={[styles.btnPrimary, { backgroundColor: colors.tint, opacity: isPredicting ? 0.7 : 1 }]}
           >
-            <IconSymbol name="sparkles" size={15} color="#1a1228" />
+            <IconSymbol name="sparkles" size={15} color={Brand.textInverse} />
             <ThemedText style={styles.btnPrimaryText}>
               {isPredicting ? t('home.analyzing') : t('home.aiAnalysis')}
             </ThemedText>
@@ -203,20 +221,15 @@ export function QuickEntryForm({ onEntrySaved }: Props) {
         {aiPrediction !== null && (
           <AiPredictionResult
             prediction={aiPrediction}
-            sleepHoursText={sleepHoursText}
-            stressLevelText={stressLevelText}
             showFeedback={showFeedback}
             setShowFeedback={setShowFeedback}
             feedbackRating={feedbackRating}
             setFeedbackRating={setFeedbackRating}
             onFeedbackSelect={(n) => {
+              // UI-only rating. The journal entry was already saved by `onSave`;
+              // writing another entry here doubled rows and skewed streak/stats.
               setFeedbackRating(n);
               setShowFeedback(false);
-              addEntry({
-                sleepHours: Number(sleepHoursText) || 7.5,
-                stressLevel: Number(stressLevelText) || 4,
-                note: `feedback:${n}`,
-              });
             }}
             colors={colors}
             t={t}
@@ -239,7 +252,7 @@ type InputFieldProps = {
   placeholder: string;
   suffix?: string;
   textColor: string;
-  colors: any;
+  colors: ThemeTokens;
   isDark: boolean;
 };
 
@@ -254,22 +267,22 @@ function InputField({
         <View style={[styles.inputIconBadge, { backgroundColor: `${iconColor}22` }]}>
           <IconSymbol name={icon as any} size={12} color={iconColor} />
         </View>
-        <ThemedText style={[styles.inputLabel, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>{label}</ThemedText>
+        <ThemedText style={[styles.inputLabel, { color: isDark ? Brand.textSecondary : '#6B7280' }]}>{label}</ThemedText>
       </View>
       <View style={[styles.inputContainer, {
-        backgroundColor: isDark ? '#151522' : colors.inputBackground,
-        borderColor: isDark ? '#2C2C3E' : colors.inputBorder,
+        backgroundColor: isDark ? Brand.background : colors.inputBackground,
+        borderColor: isDark ? Brand.border : colors.inputBorder,
       }]}>
         <TextInput
           value={value}
           onChangeText={onChangeText}
           keyboardType={keyboardType}
           placeholder={placeholder}
-          placeholderTextColor={isDark ? '#4B5563' : '#9CA3AF'}
+          placeholderTextColor={isDark ? Brand.textMuted : '#9CA3AF'}
           style={[styles.input, { color: textColor, fontWeight: '600', fontSize: 18 }]}
         />
         {suffix && (
-          <ThemedText style={[styles.inputSuffix, { color: isDark ? '#6B7280' : '#9CA3AF' }]}>{suffix}</ThemedText>
+          <ThemedText style={[styles.inputSuffix, { color: isDark ? Brand.textMuted : '#9CA3AF' }]}>{suffix}</ThemedText>
         )}
       </View>
     </View>
@@ -278,14 +291,12 @@ function InputField({
 
 type AiPredictionResultProps = {
   prediction: AiPrediction;
-  sleepHoursText: string;
-  stressLevelText: string;
   showFeedback: boolean;
   setShowFeedback: (v: boolean) => void;
   feedbackRating: number | null;
   setFeedbackRating: (n: number) => void;
   onFeedbackSelect: (n: number) => void;
-  colors: any;
+  colors: ThemeTokens;
   t: (key: string) => string;
 };
 
@@ -505,7 +516,7 @@ const styles = StyleSheet.create({
   btnPrimaryText: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#1a1228',
+    color: Brand.textInverse,
   },
   predictionBox: {
     marginTop: Spacing.md,

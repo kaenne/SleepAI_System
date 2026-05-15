@@ -18,7 +18,7 @@ import { StatusBar } from 'expo-status-bar';
 import * as React from 'react';
 import 'react-native-reanimated';
 
-import { AuthProvider } from '@/contexts/auth-context';
+import { AuthProvider, useAuth } from '@/contexts/auth-context';
 import { I18nProvider } from '@/contexts/i18n-context';
 import { ThemeProvider as SleepThemeProvider } from '@/contexts/theme-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -30,14 +30,26 @@ SplashScreen.setOptions({ fade: true, duration: 600 });
 
 function AppNavigator() {
   const colorScheme = useColorScheme();
+  const { isAuthenticated, isLoading } = useAuth();
+  const [onboardingState, setOnboardingState] = React.useState<'unknown' | 'done' | 'pending'>('unknown');
 
   React.useEffect(() => {
     AsyncStorage.getItem(ONBOARDING_KEY).then((done) => {
-      if (done === 'true') {
-        router.replace('/welcome');
-      }
+      setOnboardingState(done === 'true' ? 'done' : 'pending');
     });
   }, []);
+
+  // Route once auth + onboarding state are both resolved, then drop the splash.
+  React.useEffect(() => {
+    if (isLoading || onboardingState === 'unknown') return;
+    if (isAuthenticated) {
+      router.replace('/(tabs)');
+    } else if (onboardingState === 'done') {
+      router.replace('/welcome');
+    }
+    // else: first-time unauth user — keep initial /onboarding route.
+    SplashScreen.hideAsync();
+  }, [isLoading, isAuthenticated, onboardingState]);
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
@@ -69,12 +81,6 @@ export default function RootLayout() {
     Inter: Inter_400Regular,
     JetBrainsMono: JetBrainsMono_500Medium,
   });
-
-  React.useEffect(() => {
-    if (fontsLoaded) {
-      SplashScreen.hideAsync();
-    }
-  }, [fontsLoaded]);
 
   if (!fontsLoaded) return null;
 

@@ -97,6 +97,12 @@ public class AuthController {
                 return ResponseEntity.status(401).body(Map.of("message", "Invalid refresh token"));
             }
 
+            // Reject access tokens being used as refresh — only tokens with claim
+            // `type: "refresh"` (set by JwtCore.generateRefreshToken) are accepted here.
+            if (!"refresh".equals(jwtCore.getTokenType(request.getRefreshToken()))) {
+                return ResponseEntity.status(401).body(Map.of("message", "Invalid refresh token"));
+            }
+
             String email = jwtCore.getNameFromJwt(request.getRefreshToken());
             User user = userRepository.findByEmail(email)
                     .orElseThrow(() -> new RuntimeException("User not found"));

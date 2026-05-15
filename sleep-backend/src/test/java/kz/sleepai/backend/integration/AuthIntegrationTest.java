@@ -222,6 +222,65 @@ class AuthIntegrationTest {
                 .andExpect(jsonPath("$.sleepHours").value(7.5));
     }
 
+    // ─── GDPR delete: wipes every user-linked table ──────────────────────────
+
+    @Test
+    void delete_user_data_wipes_journal_and_stress() throws Exception {
+        String token = register_user(EMAIL + ".gdpr", PASSWORD);
+        String auth = "Bearer " + token;
+
+        // Seed journal entry
+        mockMvc.perform(post("/api/journal/entries")
+                        .header("Authorization", auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "sleepHours", 8.0,
+                                "stressLevel", 3
+                        ))))
+                .andExpect(status().isCreated());
+
+        // Seed stress measurement
+        mockMvc.perform(post("/api/stress")
+                        .header("Authorization", auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("hrvScore", 55.0))))
+                .andExpect(status().isCreated());
+
+        // Confirm data is present before deletion
+        mockMvc.perform(get("/api/journal/entries")
+                        .header("Authorization", auth))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(org.hamcrest.Matchers.greaterThan(0)));
+
+        mockMvc.perform(get("/api/stress/latest")
+                        .header("Authorization", auth))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.hrvScore").value(55.0));
+
+        // Wipe
+        mockMvc.perform(delete("/api/user/data")
+                        .header("Authorization", auth))
+                .andExpect(status().isNoContent());
+
+        // Everything user-owned must be gone — account row itself stays.
+        mockMvc.perform(get("/api/journal/entries")
+                        .header("Authorization", auth))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+
+        // Stress "latest" returns a placeholder message when no data exists
+        mockMvc.perform(get("/api/stress/latest")
+                        .header("Authorization", auth))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").isNotEmpty());
+
+        // Account row must survive
+        mockMvc.perform(get("/api/auth/me")
+                        .header("Authorization", auth))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value(EMAIL + ".gdpr"));
+    }
+
     // ─── Helper ──────────────────────────────────────────────────────────────
 
     private String register_user(String email, String password) throws Exception {

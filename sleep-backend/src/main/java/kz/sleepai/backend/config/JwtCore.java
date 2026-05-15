@@ -104,6 +104,20 @@ public class JwtCore {
         }
     }
 
+    // 4b. Извлечь тип токена ("refresh" для refresh, null для access)
+    public String getTokenType(String token) {
+        try {
+            return Jwts.parserBuilder()
+                    .setSigningKey(getKey())
+                    .build()
+                    .parseClaimsJws(token)
+                    .getBody()
+                    .get("type", String.class);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     // 5. Получить время жизни access токена в секундах
     public long getExpirationInSeconds() {
         return expiration / 1000;

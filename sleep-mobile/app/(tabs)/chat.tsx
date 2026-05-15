@@ -24,6 +24,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { ThemedText } from '@/components/themed-text';
 import { Ico } from '@/components/ui/ico';
+import { computeSleepScore } from '@/constants/sleep';
 import { BorderRadius, Brand, Spacing, Type, tonal, tonalBorder } from '@/constants/theme';
 import { useTranslation } from '@/contexts/i18n-context';
 import { useSleepJournal } from '@/hooks/use-sleep-journal';
@@ -295,7 +296,7 @@ export default function ChatScreen() {
     let sleepScore: number | null = null;
     let sleepTone: Tone = 'unknown';
     if (e?.sleepHours != null) {
-      sleepScore = Math.max(0, Math.min(100, Math.round((e.sleepHours / 8) * 100)));
+      sleepScore = computeSleepScore(e.sleepHours);
       sleepTone = sleepScore >= 80 ? 'good' : sleepScore >= 60 ? 'avg' : 'bad';
     }
 
@@ -307,12 +308,12 @@ export default function ChatScreen() {
     const e = entries[0];
     const bits: string[] = [];
     if (e) {
-      bits.push(`сон ${e.sleepHours}ч`);
-      bits.push(`стресс ${e.stressLevel}/10`);
+      bits.push(`${t('chat.contextSleep')} ${e.sleepHours}${t('chat.contextHourUnit')}`);
+      bits.push(`${t('chat.contextStress')} ${e.stressLevel}/10`);
     }
     if (latestStress?.hrvScore != null) bits.push(`HRV ${Math.round(latestStress.hrvScore)}`);
     return bits.join(', ');
-  }, [entries, latestStress]);
+  }, [entries, latestStress, t]);
 
   const [messages, setMessages] = React.useState<Message[]>(() => [
     { id: 'welcome', text: t('chat.initial'), isUser: false, timestamp: new Date() },
@@ -323,7 +324,6 @@ export default function ChatScreen() {
   const [conversationId, setConversationId] = React.useState<string | undefined>(undefined);
 
   const newMessageIds = React.useRef(new Set<string>(['welcome']));
-  const isMounted = React.useRef(false);
 
   React.useEffect(() => {
     api.getChatHistory().then((history) => {
@@ -339,7 +339,6 @@ export default function ChatScreen() {
         if (last?.conversationId) setConversationId(last.conversationId);
       }
     }).catch(() => {});
-    isMounted.current = true;
   }, []);
 
   const clearHistory = React.useCallback(() => {
@@ -458,15 +457,7 @@ export default function ChatScreen() {
         >
           {messages.map((message) => {
             const isNew = newMessageIds.current.has(message.id);
-            let displayMessage = message.text;
-            // Strip legacy English context prefix (KB-fallback replies from old backends).
-            if (!message.isUser && displayMessage.startsWith('📊 *Based on your data:')) {
-              displayMessage = displayMessage.replace(/📊 \*Based on your data: [^*]+\*\n\n/, '');
-              displayMessage = displayMessage.replace(/^\n/, '');
-            } else if (!message.isUser && displayMessage.startsWith('*Based on your data:')) {
-              displayMessage = displayMessage.replace(/\*Based on your data: [^*]+\*\n\n/, '');
-              displayMessage = displayMessage.replace(/^\n/, '');
-            }
+            const displayMessage = message.text;
             const hasDataBox = !message.isUser && message.hasDataContext === true && dataSnapshot != null;
             const timeString = message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 

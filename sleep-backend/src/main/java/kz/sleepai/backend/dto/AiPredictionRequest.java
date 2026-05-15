@@ -34,11 +34,17 @@ public class AiPredictionRequest {
     @DecimalMin("0.0") @DecimalMax("7.0")
     private Double exerciseFrequency = 3.0;
 
+    // age / gender / bmiCategory may be null when the user hasn't filled the AI
+    // Profile editor. The Python service treats null as NaN and lets the model
+    // handle missingness directly (HistGradientBoosting supports NaN natively).
     @DecimalMin("10.0") @DecimalMax("120.0")
-    private Double age = 30.0;
+    private Double age;
 
     @Min(0) @Max(1)
-    private Double gender = 0.0;
+    private Double gender;
+
+    @Min(0) @Max(2)
+    private Double bmiCategory;
 
     @DecimalMin("0.0") @DecimalMax("23.0")
     private Double bedtimeHour = 23.0;

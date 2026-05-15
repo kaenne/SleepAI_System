@@ -21,10 +21,12 @@ import { useTranslation } from '@/contexts/i18n-context';
 import { useSleepJournal } from '@/hooks/use-sleep-journal';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
-const NORM_FROM = 7;
-const NORM_TO = 9;
-const SLEEP_MIN = 0;
-const SLEEP_MAX = 12;
+import {
+  SLEEP_MAX_HOURS as SLEEP_MAX,
+  SLEEP_MIN_HOURS as SLEEP_MIN,
+  SLEEP_NORM_FROM as NORM_FROM,
+  SLEEP_NORM_TO as NORM_TO,
+} from '@/constants/sleep';
 
 function feelingForSleep(hours: number): { key: string; tone: string } {
   if (hours < 4) return { key: 'modal.feeling_exhausted', tone: '#ff6b6b' };

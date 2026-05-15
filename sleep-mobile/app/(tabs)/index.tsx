@@ -159,12 +159,7 @@ export default function HomeScreen() {
         >
           <Animated.View entering={FadeIn.duration(250)}>
             <HomeActionBar
-              colorScheme="dark"
-              tintColor={Brand.accent}
-              accentColor={Brand.info}
-              successColor={Brand.good}
               statsLabel={t('home.statsTile')}
-              journalLabel={t('home.journalTile')}
               addLabel={t('home.addTile')}
               onAddPress={() => router.push('/modal')}
             />
@@ -176,13 +171,31 @@ export default function HomeScreen() {
               <View style={styles.lastNightHeader}>
                 <ThemedText style={styles.lastNightLabel}>{t('home.lastNightTitle')}</ThemedText>
                 <View style={styles.lastNightRule} />
-                <ThemedText style={styles.lastNightDash}>—</ThemedText>
+                <ThemedText style={styles.lastNightDash}>
+                  {latestEntry
+                    ? new Date(latestEntry.createdAt).toLocaleDateString([], { day: '2-digit', month: 'short' })
+                    : '—'}
+                </ThemedText>
               </View>
-              <ThemedText style={styles.lastNightBody}>
-                {entries.length === 0
-                  ? t('home.noEntries')
-                  : `${t('home.sleepToday')}: ${latestEntry?.sleepHours}h`}
-              </ThemedText>
+              {entries.length === 0 ? (
+                <ThemedText style={styles.lastNightBody}>{t('home.noEntries')}</ThemedText>
+              ) : (
+                <View style={styles.lastNightMetrics}>
+                  <View style={styles.lastNightMetric}>
+                    <ThemedText style={[styles.lastNightVal, { color: Brand.info }]}>
+                      {latestEntry?.sleepHours}h
+                    </ThemedText>
+                    <ThemedText style={styles.lastNightSub}>{t('home.sleepToday')}</ThemedText>
+                  </View>
+                  <View style={styles.lastNightDivider} />
+                  <View style={styles.lastNightMetric}>
+                    <ThemedText style={[styles.lastNightVal, { color: Brand.warn }]}>
+                      {latestEntry?.stressLevel}/10
+                    </ThemedText>
+                    <ThemedText style={styles.lastNightSub}>{t('home.stressLabel')}</ThemedText>
+                  </View>
+                </View>
+              )}
             </Card>
           </Animated.View>
         </ScrollView>
@@ -334,6 +347,32 @@ const styles = StyleSheet.create({
   lastNightRule: { flex: 1, height: 1, backgroundColor: Brand.borderSoft },
   lastNightDash: { ...Type.monoS, color: Brand.textMuted },
   lastNightBody: { ...Type.bodyS, color: Brand.textSecondary, lineHeight: 20 },
+  lastNightMetrics: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 4,
+  },
+  lastNightMetric: {
+    flex: 1,
+    alignItems: 'flex-start',
+    gap: 2,
+  },
+  lastNightVal: {
+    ...Type.monoL,
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  lastNightSub: {
+    ...Type.section,
+    color: Brand.textMuted,
+    fontSize: 10,
+  },
+  lastNightDivider: {
+    width: 1,
+    height: 28,
+    backgroundColor: Brand.borderSoft,
+  },
 
   // HRV card
   hrvCardTop: {
