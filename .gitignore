@@ -1,4 +1,6 @@
 # Python
+__pycache__/
+*.pyc
 sleep-ai/__pycache__/
 sleep-ai/*.pyc
 sleep-ai/.venv/
@@ -39,6 +41,8 @@ Thumbs.db
 
 # Claude Code session state — local-only
 .claude/
+.agents/
+skills-lock.json
 
 # Raw datasets (downloaded from Kaggle/PhysioNet — too large for git)
 sleep-ai/multilevel-monitoring-of-activity-and-sleep-in-healthy-people-1.0.0/
