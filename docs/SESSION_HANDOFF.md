@@ -1,6 +1,6 @@
 # SleepAI — Session Handoff for Next Claude
 
-> Last updated: end of session 2026-05-14. Read this first before doing anything substantial.
+> Last updated: end of session 2026-05-18. Read this first before doing anything substantial.
 
 ## 1. What this project is
 
@@ -22,6 +22,33 @@ The user is a thesis student. They are **the primary stakeholder** — defense i
 - Email: saiat.sartay@gmail.com (from auto-injected context).
 
 ## 3. What's already been done across recent sessions
+
+### Session 2026-05-17/18 — hardening + AI integrity + push
+
+| Area | Change |
+|---|---|
+| **Security: auth** | [AuthController.refresh](../sleep-backend/src/main/java/kz/sleepai/backend/controller/AuthController.java) now rejects tokens without `type:"refresh"` claim. [JwtCore.getTokenType()](../sleep-backend/src/main/java/kz/sleepai/backend/config/JwtCore.java) added. Access tokens used as refresh → 401. |
+| **Security: admin** | [UserController](../sleep-backend/src/main/java/kz/sleepai/backend/controller/UserController.java): `/api/user/all` (unauthenticated user listing) **removed**. No roles in system — endpoint was wide-open before. |
+| **Security: GDPR** | `/api/user/export` got `@Transactional(readOnly=true)` — the `setUser(null)` detach trick can't accidentally persist `user_id=null` if someone widens the transaction. |
+| **Backend repo** | [PasswordResetTokenRepository.deleteByEmail](../sleep-backend/src/main/java/kz/sleepai/backend/repository/PasswordResetTokenRepository.java) now `@Modifying @Query` — single DELETE instead of derived SELECT+DELETE. |
+| **AI integration** | Mobile passes `age/gender/bmiCategory` from `useUserProfile()` to `/predict` in both [quick-entry-form](../sleep-mobile/components/home/quick-entry-form.tsx) and [ai-prediction-card](../sleep-mobile/components/home/ai-prediction-card.tsx). Pydantic `SleepDataInput` dropped defaults (None→NaN, HGB handles missingness). `bmiCategory` added to DTO. `heartRate` unified on `DEFAULT_HEART_RATE_BPM`. |
+| **AI version** | [sleep-ai/requirements.txt](../sleep-ai/requirements.txt): `scikit-learn==1.6.1` pinned (was `>=1.3.0`). Matches training version, removes `InconsistentVersionWarning` unpickle bias. **Container rebuilt.** |
+| **Mobile cleanup** | Brand-token migration in `sleep-timer.tsx` (color hardcodes → Brand.info/good/textInverse). HomeActionBar dropped dead `colorScheme`/`tintColor` props. `useColorScheme() ?? 'dark'` (was 'light'). `saveAiProfile` now try/catch+Alert. Dropped double-entry `addEntry` on feedback rating (was inflating streak). Removed dead `isMounted` ref + legacy strip-prefix regex in chat. Simplified chart fallback in stats. |
+| **Test infra** | Found h2+postgresql driver classpath conflict — both `<scope>test</scope>` in [pom.xml](../sleep-backend/pom.xml). User reverted my `driver-class-name` fix in DynamicPropertySource. **Workaround for next session: add `registry.add("spring.datasource.driver-class-name", () -> "org.postgresql.Driver")` in `AuthIntegrationTest.configureProperties` if you need integration tests to actually run.** With my fix applied locally: 146/146 tests green (including 11 integration). Without: H2 driver intercepts postgres URL → context fails to load → cascade. |
+| **CI** | `.github/workflows/ci.yml` exists locally (3 jobs: backend mvn test, ai smoke-import, mobile tsc+jest+eslint). **Pushed to GitHub 2026-05-18** along with 22 catch-up commits. First run will execute on next push/PR. Note: integration test will skip in CI (`@EnabledIf("isDockerAvailable")`) — Testcontainers needs Docker-in-Docker. |
+| **Repo hygiene** | `.gitignore`: added global `__pycache__/`, `*.pyc`, `.agents/`, `skills-lock.json`. Untracked stray `__pycache__/gen_icons.cpython-39.pyc`. Removed local clutter: `*_context.txt`, `sleep-mobile/.venv/`, `sleep-mobile/android/`, `sleep-mobile/.expo/`, `sleep-ai/venv/`. `node_modules` partially deleted — VS Code held `@unrs/resolver-binding-win32-x64-msvc`. Reinstall via `npm install` needed before next mobile run. |
+| **iOS** | `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` filled in `sleep-mobile/.env` (NOT committed). Demo path: Expo Go (iPhone scans `npx expo start --tunnel` QR). EAS Build available for full `.ipa` (`6522e1db-...` projectId in app.json). |
+
+### Verified end of session
+- ✅ TS clean (`npx tsc --noEmit` in sleep-mobile)
+- ✅ Backend builds in Docker
+- ✅ AI service rebuilt, sklearn 1.6.1, no `InconsistentVersionWarning`
+- ✅ Newman smoke 20/20 requests, 25/25 assertions green against running stack
+- ✅ `/predict` returns valid results both with full profile and with null age/gender/bmi
+- ✅ Backend tests 146/146 (locally, with my driver-class-name fix that user later reverted)
+- ✅ `git push origin main` succeeded — GitHub current with local main
+
+## 3b. Previously done (older sessions)
 
 ### Mobile (`sleep-mobile/`)
 
