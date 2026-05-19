@@ -53,6 +53,10 @@ class AuthIntegrationTest {
         registry.add("spring.datasource.url", postgres::getJdbcUrl);
         registry.add("spring.datasource.username", postgres::getUsername);
         registry.add("spring.datasource.password", postgres::getPassword);
+        // Both h2 and postgresql drivers are on the test classpath. Without this
+        // override Spring Boot auto-detection grabs h2 first and chokes on the
+        // Testcontainers jdbc:postgresql:// URL. Force the right driver here.
+        registry.add("spring.datasource.driver-class-name", () -> "org.postgresql.Driver");
         registry.add("spring.jpa.hibernate.ddl-auto", () -> "create-drop");
         registry.add("jwt.secret", () -> "dGhpcy1pcy1hLXZlcnktbG9uZy1zZWNyZXQta2V5LWZvci10ZXN0aW5n");
         registry.add("jwt.expiration", () -> "86400000");
