@@ -22,7 +22,6 @@ import { SectionHeader } from '@/components/ui/section-header';
 import { BorderRadius, Brand, Spacing, Type, tonal, tonalBorder } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { LANG_OPTIONS, useTranslation } from '@/contexts/i18n-context';
-import { useTheme } from '@/contexts/theme-context';
 import { useNotifications } from '@/hooks/use-notifications';
 import { useSleepJournal } from '@/hooks/use-sleep-journal';
 import { api } from '@/services/api';
@@ -133,7 +132,6 @@ function AccountCard({ isAuthenticated, name, email }: { isAuthenticated: boolea
 // ── Screen ───────────────────────────────────────────────────────────────────
 export default function SettingsScreen() {
   const { user, isAuthenticated, logout } = useAuth();
-  const { isDark, toggleTheme } = useTheme();
   const notif = useNotifications();
   const { entries, clearAll, seedDemo } = useSleepJournal();
   const { t, language, setLanguage } = useTranslation();
@@ -339,14 +337,6 @@ export default function SettingsScreen() {
             label={t('settings.reminderTime')}
             value={reminderTime}
             onPress={() => setShowTimePicker(true)}
-          />
-          <SettingRow
-            icon="Moon"
-            iconColor={Brand.accent}
-            label={t('settings.darkMode')}
-            hasToggle
-            toggleValue={isDark}
-            onToggle={toggleTheme}
           />
           <SettingRow
             icon="Globe"
