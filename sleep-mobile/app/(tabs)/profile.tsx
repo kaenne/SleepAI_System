@@ -498,12 +498,15 @@ export default function ProfileScreen() {
             <View style={styles.aiEditGroup}>
               <ThemedText style={styles.aiEditLabel}>{t('profile.editGenderLabel')}</ThemedText>
               <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
-                {(['male', 'female'] as const).map((key, val) => {
-                  const active = tempGender === val;
+                {(['male', 'female'] as const).map((key) => {
+                  // Backend convention: 0 = female, 1 = male. Don't derive from
+                  // array index — that desyncs from the display logic above.
+                  const value: 0 | 1 = key === 'male' ? 1 : 0;
+                  const active = tempGender === value;
                   return (
                     <Pressable
                       key={key}
-                      onPress={() => setTempGender(active ? null : (val as 0 | 1))}
+                      onPress={() => setTempGender(active ? null : value)}
                       style={[
                         styles.chipBtn,
                         { flex: 1 },
