@@ -166,6 +166,8 @@ class SleepDataInput(BaseModel):
     gender: Optional[float] = Field(default=None, ge=0, le=1)
     bmiCategory: Optional[float] = Field(default=None, ge=0, le=2)
     bedtimeHour: Optional[float] = Field(default=23.0, ge=0, le=23)
+    # UI language for the generated `message` text. Falls back to "ru".
+    language: Optional[str] = Field(default="ru", pattern=r"^(ru|en|kz)$")
 
 class SleepFactor(BaseModel):
     feature: str    # название фактора на русском
@@ -276,7 +278,13 @@ def predict_sleep_quality(request: Request, data: SleepDataInput):
             deep_pct = 20.0
             awk_cat = 0
             
-        awk_labels = {0: 'норма (0–2)', 1: 'нарушен (3+)'}
+        lang = (data.language or "ru").lower()
+        awk_labels_by_lang = {
+            "ru": {0: 'норма (0–2)', 1: 'нарушен (3+)'},
+            "en": {0: 'normal (0–2)', 1: 'disturbed (3+)'},
+            "kz": {0: 'қалыпты (0–2)', 1: 'бұзылған (3+)'},
+        }
+        awk_labels = awk_labels_by_lang.get(lang, awk_labels_by_lang["ru"])
 
         message = generate_message(quality, data)
         return {
@@ -293,29 +301,74 @@ def predict_sleep_quality(request: Request, data: SleepDataInput):
         raise HTTPException(status_code=400, detail=str(e))
 
 
+# Localized message phrases keyed by language code. "ru" is the canonical
+# source — "en" and "kz" are direct translations. Mobile passes the active UI
+# language with each /predict call so the message matches the rest of the app.
+_MSG_PHRASES = {
+    "ru": {
+        "q_excellent": "Отличное качество сна! Продолжайте в том же духе.",
+        "q_good":      "Хорошее качество сна, есть небольшой потенциал для улучшения.",
+        "q_low":       "Качество сна ниже нормы.",
+        "short":       "💤 Вы спите {h}ч — увеличьте до 7-8ч.",
+        "long":        "⏰ {h}ч — немного много, оптимум 7-8ч.",
+        "stress":      "🧘 Высокий стресс — попробуйте технику 4-7-8 перед сном.",
+        "heart":       "❤️ Повышенный пульс — исключите кофеин за 6ч до сна.",
+        "alcohol":     "🍷 Алкоголь снижает REM-фазу на 20-30% — постарайтесь сократить.",
+        "caffeine":    "☕ Много кофеина — переносите последнюю чашку на до 14:00.",
+        "exercise":    "🏃 Регулярные тренировки улучшают глубокий сон — попробуйте 3 раза в неделю.",
+    },
+    "en": {
+        "q_excellent": "Excellent sleep quality! Keep it up.",
+        "q_good":      "Good sleep quality, with some room for improvement.",
+        "q_low":       "Sleep quality is below normal.",
+        "short":       "💤 You sleep {h}h — aim for 7-8h.",
+        "long":        "⏰ {h}h is a bit much, 7-8h is optimal.",
+        "stress":      "🧘 High stress — try the 4-7-8 breathing technique before bed.",
+        "heart":       "❤️ Elevated heart rate — cut caffeine at least 6h before bed.",
+        "alcohol":     "🍷 Alcohol cuts REM by 20-30% — try to reduce it.",
+        "caffeine":    "☕ A lot of caffeine — move your last cup to before 2 PM.",
+        "exercise":    "🏃 Regular workouts improve deep sleep — aim for 3× per week.",
+    },
+    "kz": {
+        "q_excellent": "Ұйқы сапасы тамаша! Осы режимде қалыңыз.",
+        "q_good":      "Ұйқы сапасы жақсы, бірақ жақсартуға мүмкіндік бар.",
+        "q_low":       "Ұйқы сапасы қалыптан төмен.",
+        "short":       "💤 Сіз {h} сағат ұйықтайсыз — 7-8 сағатқа дейін көтеріңіз.",
+        "long":        "⏰ {h} сағат — біраз көп, оңтайлысы 7-8 сағат.",
+        "stress":      "🧘 Стресс жоғары — ұйықтар алдында 4-7-8 тыныс алу әдісін қолданыңыз.",
+        "heart":       "❤️ Жүрек соғысы жоғары — ұйықтауға 6 сағат қалғанда кофеинді тоқтатыңыз.",
+        "alcohol":     "🍷 Алкоголь REM-фазаны 20-30%-ға қысқартады — азайтуға тырысыңыз.",
+        "caffeine":    "☕ Кофеин көп — соңғы кесені 14:00-ге дейін ішіңіз.",
+        "exercise":    "🏃 Тұрақты жаттығулар терең ұйқыны жақсартады — аптасына 3 рет жасап көріңіз.",
+    },
+}
+
+
 def generate_message(quality: float, data: SleepDataInput) -> str:
+    lang = (data.language or "ru").lower()
+    p = _MSG_PHRASES.get(lang, _MSG_PHRASES["ru"])
     tips = []
     if quality >= 80:
-        tips.append("Отличное качество сна! Продолжайте в том же духе.")
+        tips.append(p["q_excellent"])
     elif quality >= 60:
-        tips.append("Хорошее качество сна, есть небольшой потенциал для улучшения.")
+        tips.append(p["q_good"])
     else:
-        tips.append("Качество сна ниже нормы.")
+        tips.append(p["q_low"])
 
     if data.sleepDuration < 7:
-        tips.append(f"💤 Вы спите {data.sleepDuration}ч — увеличьте до 7-8ч.")
+        tips.append(p["short"].format(h=data.sleepDuration))
     elif data.sleepDuration > 9:
-        tips.append(f"⏰ {data.sleepDuration}ч — немного много, оптимум 7-8ч.")
+        tips.append(p["long"].format(h=data.sleepDuration))
     if data.stressLevel > 6:
-        tips.append("🧘 Высокий стресс — попробуйте технику 4-7-8 перед сном.")
+        tips.append(p["stress"])
     if data.heartRate > 80:
-        tips.append("❤️ Повышенный пульс — исключите кофеин за 6ч до сна.")
+        tips.append(p["heart"])
     if data.alcoholIntake and data.alcoholIntake > 1:
-        tips.append("🍷 Алкоголь снижает REM-фазу на 20-30% — постарайтесь сократить.")
+        tips.append(p["alcohol"])
     if data.caffeineIntake and data.caffeineIntake > 200:
-        tips.append("☕ Много кофеина — переносите последнюю чашку на до 14:00.")
+        tips.append(p["caffeine"])
     if data.exerciseFrequency and data.exerciseFrequency < 2:
-        tips.append("🏃 Регулярные тренировки улучшают глубокий сон — попробуйте 3 раза в неделю.")
+        tips.append(p["exercise"])
     return " ".join(tips)
 
 

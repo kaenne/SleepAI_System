@@ -105,6 +105,8 @@ export type AiPredictionRequest = {
   gender?: number;        // 0 = female, 1 = male
   bmiCategory?: number;   // 0 = normal, 1 = overweight, 2 = obese
   bedtimeHour?: number;
+  // UI language for the message field — "ru" | "en" | "kz".
+  language?: string;
 };
 
 export type AiPredictionFactor = {

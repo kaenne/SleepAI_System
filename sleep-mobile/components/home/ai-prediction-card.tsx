@@ -74,7 +74,7 @@ type Props = {
 export function AiPredictionCard({ entry }: Props) {
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const { profile } = useUserProfile();
 
   const [result, setResult] = React.useState<AiPredictionResponse | null>(null);
@@ -96,6 +96,7 @@ export function AiPredictionCard({ entry }: Props) {
         stressLevel: entry.stressLevel,
         heartRate: DEFAULT_HEART_RATE_BPM,
         bedtimeHour: new Date(entry.createdAt).getHours() || 23,
+        language,
         ...(profile.age !== null && { age: profile.age }),
         ...(profile.gender !== null && { gender: profile.gender }),
         ...(profile.bmiCategory !== null && { bmiCategory: profile.bmiCategory }),
@@ -106,7 +107,7 @@ export function AiPredictionCard({ entry }: Props) {
       })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
-  }, [entry.id, entry.sleepHours, entry.stressLevel, entry.createdAt, qualityWidth, profile.age, profile.gender, profile.bmiCategory]);
+  }, [entry.id, entry.sleepHours, entry.stressLevel, entry.createdAt, qualityWidth, profile.age, profile.gender, profile.bmiCategory, language]);
 
   if (error) return null;
 

@@ -270,7 +270,7 @@ function AiDataCard({ snapshot, t }: { snapshot: AiDataSnapshot | null; t: (k: s
 export default function ChatScreen() {
   const scrollRef = React.useRef<ScrollView>(null);
   const insets = useSafeAreaInsets();
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
 
   const { entries } = useSleepJournal();
   const { latestStress } = useStressMonitor();
@@ -324,6 +324,20 @@ export default function ChatScreen() {
   const [conversationId, setConversationId] = React.useState<string | undefined>(undefined);
 
   const newMessageIds = React.useRef(new Set<string>(['welcome']));
+
+  // Reset the chat whenever the active language changes — Claude keys off the
+  // conversation history's language, so without a reset it keeps replying in the
+  // original language even after the UI switches.
+  const lastLangRef = React.useRef(language);
+  React.useEffect(() => {
+    if (lastLangRef.current === language) return;
+    lastLangRef.current = language;
+    void api.clearChatHistory().catch(() => {});
+    setMessages([{ id: 'welcome', text: t('chat.initial'), isUser: false, timestamp: new Date() }]);
+    setSuggestions([]);
+    setConversationId(undefined);
+    newMessageIds.current = new Set(['welcome']);
+  }, [language, t]);
 
   React.useEffect(() => {
     api.getChatHistory().then((history) => {

@@ -48,4 +48,8 @@ public class AiPredictionRequest {
 
     @DecimalMin("0.0") @DecimalMax("23.0")
     private Double bedtimeHour = 23.0;
+
+    // UI language for the localized AI message ("ru" | "en" | "kz"). Optional —
+    // the AI service falls back to Russian when not provided.
+    private String language;
 }
