@@ -22,7 +22,6 @@ import { BorderRadius, Brand, Colors, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useTranslation } from '@/contexts/i18n-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { useGoogleAuth } from '@/hooks/use-google-auth';
 import { useResponsive } from '@/hooks/use-responsive';
 import { api } from '@/services/api';
 
@@ -37,29 +36,16 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
-  const [googleError, setGoogleError] = useState<string | null>(null);
 
   // Clear any auth error left over from the previous screen on mount.
   React.useEffect(() => {
     clearError();
   }, [clearError]);
 
-  const handleGoogleSuccess = async (accessToken: string) => {
-    setGoogleError(null);
-    try {
-      const result = await api.googleLogin(accessToken);
-      if (result?.tokens?.accessToken) {
-        // Auth context — store tokens and navigate
-        await login({ email: '', password: '', googleToken: accessToken } as any);
-      }
-      router.replace('/(tabs)');
-    } catch (e: unknown) {
-      const err = e as { message?: string };
-      setGoogleError(err?.message ?? (t('login.googleError') as string));
-    }
-  };
-
-  const { signIn: signInWithGoogle, isPending: googlePending, isConfigured: googleConfigured } = useGoogleAuth(handleGoogleSuccess);
+  // Google OAuth temporarily disabled — new Google Android OAuth clients require
+  // custom URI scheme activation that has no public API. Restore after thesis defense.
+  // const handleGoogleSuccess = async (accessToken: string) => { ... };
+  // const { signIn: signInWithGoogle, isPending: googlePending, isConfigured: googleConfigured } = useGoogleAuth(handleGoogleSuccess);
 
   const handleForgotPassword = async () => {
     const targetEmail = email.trim().toLowerCase();
@@ -119,8 +105,8 @@ export default function LoginScreen() {
     }
   };
 
-  const displayError = validationError || error || googleError;
-  const anyLoading = isLoading || googlePending;
+  const displayError = validationError || error;
+  const anyLoading = isLoading;
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -264,51 +250,37 @@ export default function LoginScreen() {
               )}
             </Pressable>
 
-            {/* Divider */}
-            <View style={styles.divider}>
-              <View style={[styles.dividerLine, { backgroundColor: colors.inputBorder }]} />
-              <ThemedText style={[styles.dividerText, { color: colors.muted }]}>
-                {t('login.orLogin')}
-              </ThemedText>
-              <View style={[styles.dividerLine, { backgroundColor: colors.inputBorder }]} />
-            </View>
+            {/*
+              Social login (Apple + Google) temporarily hidden until Google OAuth
+              custom URI scheme is enabled for the Android client (new Google clients
+              require gcloud workforce-style configuration). Restore after thesis defense.
 
-            {/* Social Login */}
-            <View style={styles.socialButtons}>
-              <Pressable
-                style={[
-                  styles.socialButton,
-                  { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder },
-                ]}
-              >
-                <IconSymbol name="apple.logo" size={rs(24)} color={colors.text} />
-              </Pressable>
+              <View style={styles.divider}>
+                <View style={[styles.dividerLine, { backgroundColor: colors.inputBorder }]} />
+                <ThemedText style={[styles.dividerText, { color: colors.muted }]}>
+                  {t('login.orLogin')}
+                </ThemedText>
+                <View style={[styles.dividerLine, { backgroundColor: colors.inputBorder }]} />
+              </View>
 
-              {/* Google Sign-In */}
-              <Pressable
-                style={[
-                  styles.socialButton,
-                  {
-                    backgroundColor: colors.inputBackground,
-                    borderColor: googleConfigured ? colors.inputBorder : colors.cardBorder,
-                    opacity: googleConfigured ? 1 : 0.45,
-                  },
-                ]}
-                onPress={signInWithGoogle}
-                disabled={!googleConfigured || anyLoading}
-              >
-                {googlePending ? (
-                  <ActivityIndicator size="small" color="#4285F4" />
-                ) : (
-                  <ThemedText style={[styles.googleIcon, { fontSize: rf(24) }]}>G</ThemedText>
-                )}
-              </Pressable>
-            </View>
-            {!googleConfigured && (
-              <ThemedText style={[styles.googleHint, { color: colors.muted }]}>
-                {t('login.googleNotConfigured')}
-              </ThemedText>
-            )}
+              <View style={styles.socialButtons}>
+                <Pressable style={[styles.socialButton, { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder }]}>
+                  <IconSymbol name="apple.logo" size={rs(24)} color={colors.text} />
+                </Pressable>
+                <Pressable
+                  style={[styles.socialButton, { backgroundColor: colors.inputBackground, borderColor: googleConfigured ? colors.inputBorder : colors.cardBorder, opacity: googleConfigured ? 1 : 0.45 }]}
+                  onPress={signInWithGoogle}
+                  disabled={!googleConfigured || anyLoading}
+                >
+                  {googlePending ? <ActivityIndicator size="small" color="#4285F4" /> : <ThemedText style={[styles.googleIcon, { fontSize: rf(24) }]}>G</ThemedText>}
+                </Pressable>
+              </View>
+              {!googleConfigured && (
+                <ThemedText style={[styles.googleHint, { color: colors.muted }]}>
+                  {t('login.googleNotConfigured')}
+                </ThemedText>
+              )}
+            */}
 
             {/* Development Mode - Mock Credentials Removed for Production */}
 
