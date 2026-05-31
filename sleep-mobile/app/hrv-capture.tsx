@@ -101,6 +101,7 @@ export default function HrvCaptureScreen() {
   const [samples, setSamples] = React.useState<RedSample[]>([]);
   const [peakIndices, setPeakIndices] = React.useState<number[]>([]);
   const [liveBpm, setLiveBpm] = React.useState(0);
+  const [liveRedMean, setLiveRedMean] = React.useState(0);
   const [signalQuality, setSignalQuality] = React.useState<'unknown' | 'ok' | 'weak'>('unknown');
 
   const samplesRef = React.useRef<RedSample[]>([]);
@@ -219,6 +220,7 @@ export default function HrvCaptureScreen() {
           const partial = computeHrv(samplesRef.current);
           setSignalQuality(partial.validContact ? 'ok' : 'weak');
           setLiveBpm(partial.bpm);
+          setLiveRedMean(Math.round(partial.redMean));
           // Recompute peak indices for chart overlay
           // (cheap enough at <100 samples)
           const reds = samplesRef.current.map((s) => s.r);
@@ -250,6 +252,27 @@ export default function HrvCaptureScreen() {
       }
     }, HRV_SAMPLE_INTERVAL_MS);
   }, [captureFrame, finish]);
+
+  // Demo mode: synthesises a realistic HRV reading without actually using the
+  // camera. Useful for thesis defence on devices where the LED flash overheats
+  // or auto-exposure prevents a stable red signal. The synthesised value is
+  // still stored in the real backend so analytics treats it as any other entry.
+  const runDemoMeasurement = React.useCallback(async () => {
+    const fakeHrv = 45 + Math.floor(Math.random() * 21); // 45-65 ms
+    const fakeBpm = 62 + Math.floor(Math.random() * 17); // 62-78 bpm
+    try {
+      await recordStress(fakeHrv);
+    } catch (e) {
+      console.warn('save demo HRV failed:', e);
+    }
+    Alert.alert(
+      t('hrv.doneTitle'),
+      t('hrv.doneOk')
+        .replace('{{hrv}}', String(fakeHrv))
+        .replace('{{bpm}}', String(fakeBpm)),
+      [{ text: t('common.ok'), onPress: () => router.back() }],
+    );
+  }, [recordStress, t]);
 
   const cancel = React.useCallback(() => {
     if (tickHandleRef.current) {
@@ -315,11 +338,14 @@ export default function HrvCaptureScreen() {
             <Ico.Heart size={56} color={Brand.accent} />
           </Animated.View>
 
-          {/* Live BPM readout — only shows when we have a reading */}
-          {phase === 'capturing' && liveBpm > 0 && (
+          {/* Live BPM + signal-strength readout */}
+          {phase === 'capturing' && (liveBpm > 0 || liveRedMean > 0) && (
             <Animated.View entering={FadeIn.duration(200)} style={styles.bpmRow}>
-              <ThemedText style={styles.bpmValue}>{liveBpm}</ThemedText>
+              <ThemedText style={styles.bpmValue}>{liveBpm || '—'}</ThemedText>
               <ThemedText style={styles.bpmUnit}>{t('hrv.bpmUnit')}</ThemedText>
+              {liveRedMean > 0 && (
+                <ThemedText style={styles.redMeanBadge}>R:{liveRedMean}</ThemedText>
+              )}
             </Animated.View>
           )}
 
@@ -360,12 +386,21 @@ export default function HrvCaptureScreen() {
 
         <View style={styles.footer}>
           {phase === 'idle' && (
-            <Btn
-              label={t('hrv.startBtn')}
-              onPress={startCapture}
-              fullWidth
-              leading={<Ico.Pulse size={18} color={Brand.textInverse} />}
-            />
+            <>
+              <Btn
+                label={t('hrv.startBtn')}
+                onPress={startCapture}
+                fullWidth
+                leading={<Ico.Pulse size={18} color={Brand.textInverse} />}
+              />
+              <View style={{ height: Spacing.sm }} />
+              <Btn
+                label={t('hrv.demoBtn')}
+                variant="secondary"
+                onPress={runDemoMeasurement}
+                fullWidth
+              />
+            </>
           )}
           {phase === 'capturing' && (
             <Btn label={t('common.cancel')} variant="secondary" onPress={cancel} fullWidth />
@@ -439,6 +474,16 @@ const styles = StyleSheet.create({
     color: Brand.textMuted,
     letterSpacing: 1,
     textTransform: 'uppercase',
+  },
+  redMeanBadge: {
+    fontSize: 10,
+    color: Brand.textMuted,
+    backgroundColor: Brand.surfaceElevated,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    marginLeft: 4,
+    fontVariant: ['tabular-nums'],
   },
   chartCard: {
     width: CHART_WIDTH + 24,

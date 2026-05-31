@@ -144,6 +144,11 @@ export default function SettingsScreen() {
   const [showLangPicker, setShowLangPicker] = React.useState(false);
   const [tempHour, setTempHour] = React.useState(notif.time.hour);
   const [tempMinute, setTempMinute] = React.useState(notif.time.minute);
+  const [showPasswordModal, setShowPasswordModal] = React.useState(false);
+  const [currentPassword, setCurrentPassword] = React.useState('');
+  const [newPassword, setNewPassword] = React.useState('');
+  const [confirmPassword, setConfirmPassword] = React.useState('');
+  const [passwordSaving, setPasswordSaving] = React.useState(false);
 
   React.useEffect(() => {
     if (showTimePicker) {
@@ -156,6 +161,31 @@ export default function SettingsScreen() {
     const ok = await notif.toggle(value);
     if (!ok && value) Alert.alert(t('settings.allowNotifications'), t('settings.allowNotificationsMsg'));
   }, [notif, t]);
+
+  const handleChangePassword = React.useCallback(async () => {
+    if (newPassword.length < 6) {
+      Alert.alert(t('settings.changePassword'), t('settings.pwdTooShort'));
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      Alert.alert(t('settings.changePassword'), t('settings.pwdMismatch'));
+      return;
+    }
+    setPasswordSaving(true);
+    try {
+      await api.changePassword(currentPassword, newPassword);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setShowPasswordModal(false);
+      Alert.alert(t('common.done'), t('settings.pwdChanged'));
+    } catch (e: unknown) {
+      const err = e as { message?: string };
+      Alert.alert(t('settings.changePassword'), err?.message || t('settings.pwdError'));
+    } finally {
+      setPasswordSaving(false);
+    }
+  }, [currentPassword, newPassword, confirmPassword, t]);
 
   const handleSaveTime = React.useCallback(async () => {
     await notif.updateTime({ hour: tempHour, minute: tempMinute });
@@ -262,13 +292,13 @@ export default function SettingsScreen() {
               icon="User"
               iconColor={Brand.accent}
               label={t('settings.editProfile')}
-              onPress={() => Alert.alert(t('settings.editProfile'), t('common.comingSoon'))}
+              onPress={() => router.push('/(tabs)/profile' as any)}
             />
             <SettingRow
               icon="Login"
               iconColor={Brand.warn}
               label={t('settings.changePassword')}
-              onPress={() => Alert.alert(t('settings.changePassword'), t('common.comingSoon'))}
+              onPress={() => setShowPasswordModal(true)}
             />
             <SettingRow
               icon="Login"
@@ -498,6 +528,59 @@ export default function SettingsScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Change password modal */}
+      <Modal visible={showPasswordModal} transparent animationType="fade" onRequestClose={() => setShowPasswordModal(false)}>
+        <Pressable style={styles.modalOverlay} onPress={() => !passwordSaving && setShowPasswordModal(false)}>
+          <View style={styles.modalCard} onStartShouldSetResponder={() => true}>
+            <ThemedText style={styles.modalTitle}>{t('settings.changePassword')}</ThemedText>
+
+            <TextInput
+              style={styles.modalInput}
+              placeholder={t('settings.pwdCurrent')}
+              placeholderTextColor={Brand.textMuted}
+              secureTextEntry
+              value={currentPassword}
+              onChangeText={setCurrentPassword}
+              editable={!passwordSaving}
+            />
+            <TextInput
+              style={styles.modalInput}
+              placeholder={t('settings.pwdNew')}
+              placeholderTextColor={Brand.textMuted}
+              secureTextEntry
+              value={newPassword}
+              onChangeText={setNewPassword}
+              editable={!passwordSaving}
+            />
+            <TextInput
+              style={styles.modalInput}
+              placeholder={t('settings.pwdConfirm')}
+              placeholderTextColor={Brand.textMuted}
+              secureTextEntry
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              editable={!passwordSaving}
+            />
+
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
+              <Btn
+                label={t('common.cancel')}
+                variant="secondary"
+                onPress={() => setShowPasswordModal(false)}
+                fullWidth
+                disabled={passwordSaving}
+              />
+              <Btn
+                label={passwordSaving ? t('common.loading') : t('common.save')}
+                onPress={handleChangePassword}
+                fullWidth
+                disabled={passwordSaving}
+              />
+            </View>
+          </View>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -595,8 +678,19 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Brand.border,
   },
-  modalTitle: { ...Type.titleM, color: Brand.textPrimary },
+  modalTitle: { ...Type.titleM, color: Brand.textPrimary, marginBottom: 14 },
   modalSub: { ...Type.bodyS, color: Brand.textSecondary, marginTop: 4, marginBottom: 18 },
+  modalInput: {
+    backgroundColor: Brand.surfaceElevated,
+    borderWidth: 1,
+    borderColor: Brand.borderSoft,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    color: Brand.textPrimary,
+    fontSize: 14,
+    marginBottom: 10,
+  },
 
   langOption: {
     flexDirection: 'row',

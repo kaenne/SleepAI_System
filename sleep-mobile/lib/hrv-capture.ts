@@ -22,9 +22,9 @@ import pako from 'pako';
  */
 
 // ── Public constants ─────────────────────────────────────────────────────────
-export const HRV_CAPTURE_DURATION_MS = 30_000;
+export const HRV_CAPTURE_DURATION_MS = 15_000;
 export const HRV_SAMPLE_INTERVAL_MS = 333; // target ~3 FPS
-export const HRV_MIN_SAMPLES = 20;
+export const HRV_MIN_SAMPLES = 10;
 
 // ── Types ────────────────────────────────────────────────────────────────────
 export type RedSample = {
@@ -277,9 +277,10 @@ export function computeHrv(samples: RedSample[]): HrvResult {
 
   const reds = samples.map((s) => s.r);
   const redMean = reds.reduce((a, b) => a + b, 0) / reds.length;
-  // For 8-bit red channel: properly applied finger + flash saturates the red
-  // channel >180. Below ~120 indicates no contact / weak flash.
-  const validContact = redMean > 120;
+  // Lowered threshold (was 120) to accommodate Android cameras whose auto-exposure
+  // darkens the red channel even with proper finger+flash contact. 80/255 is a
+  // pragmatic floor that still filters out completely uncovered frames.
+  const validContact = redMean > 80;
 
   // Detrend signal (window ~1 sec at 3 FPS = 3 samples each side).
   const detrended = detrend(reds, 3);

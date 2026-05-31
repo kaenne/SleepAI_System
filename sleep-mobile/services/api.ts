@@ -311,6 +311,14 @@ export const api = {
     });
   },
 
+  async changePassword(currentPassword: string, newPassword: string): Promise<void> {
+    await requestJson<void>('/api/auth/change-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
+  },
+
   // ============ AI Prediction ============
 
   async predictSleepQuality(payload: AiPredictionRequest) {
