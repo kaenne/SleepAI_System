@@ -181,10 +181,13 @@ export const Type = {
   monoM:   { fontFamily: Fonts.mono, fontSize: 14, fontWeight: '500' as const, letterSpacing: 0.4 },
   monoS:   { fontFamily: Fonts.mono, fontSize: 12, fontWeight: '500' as const, letterSpacing: 0.4 },
 
-  // Section header — JetBrains Mono, uppercase, wide tracking
+  // Section header — JetBrains Mono, uppercase, wide tracking.
+  // Explicit lineHeight overrides ThemedText's default (26) which made section
+  // labels render in a much taller box than their 11px glyphs warrant.
   section: {
     fontFamily: Fonts.mono,
     fontSize: 11,
+    lineHeight: 14,
     fontWeight: '600' as const,
     letterSpacing: 0.8,
     textTransform: 'uppercase' as const,

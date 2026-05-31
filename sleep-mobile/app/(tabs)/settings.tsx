@@ -135,7 +135,7 @@ export default function SettingsScreen() {
   const { user, isAuthenticated, logout } = useAuth();
   const { isDark, toggleTheme } = useTheme();
   const notif = useNotifications();
-  const { entries, clearAll } = useSleepJournal();
+  const { entries, clearAll, seedDemo } = useSleepJournal();
   const { t, language, setLanguage } = useTranslation();
 
   const [backendUrl, setBackendUrl] = React.useState(api.getBaseUrl() || '');
@@ -191,6 +191,23 @@ export default function SettingsScreen() {
       } catch {}
     }
   }, [isAuthenticated, entries, t]);
+
+  const handleSeedDemo = React.useCallback(() => {
+    Alert.alert(t('settings.seedDemoTitle'), t('settings.seedDemoMsg'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('settings.seedDemoBtn'),
+        onPress: async () => {
+          try {
+            const n = await seedDemo();
+            Alert.alert(t('common.done'), t('settings.seedDemoDone', { n: String(n) }));
+          } catch {
+            Alert.alert(t('common.error'), t('common.comingSoon'));
+          }
+        },
+      },
+    ]);
+  }, [seedDemo, t]);
 
   const handleClearData = React.useCallback(() => {
     Alert.alert(t('settings.clearDataTitle'), t('settings.clearDataMsg'), [
@@ -348,6 +365,13 @@ export default function SettingsScreen() {
             label={t('settings.export')}
             description="JSON · CSV"
             onPress={handleExport}
+          />
+          <SettingRow
+            icon="Sparkles"
+            iconColor={Brand.accent}
+            label={t('settings.seedDemo')}
+            description={t('settings.seedDemoHint')}
+            onPress={handleSeedDemo}
           />
           <SettingRow
             icon="Close"

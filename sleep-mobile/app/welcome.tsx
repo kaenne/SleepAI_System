@@ -7,13 +7,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { BorderRadius, Colors, Spacing } from '@/constants/theme';
+import { BorderRadius, Brand, Colors, Spacing } from '@/constants/theme';
 import { useIsAuthenticated } from '@/contexts/auth-context';
 import { useTranslation } from '@/contexts/i18n-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export default function WelcomeScreen() {
-  const colorScheme = useColorScheme() ?? 'light';
+  const colorScheme = useColorScheme() ?? 'dark';
   const colors = Colors[colorScheme];
   const { isAuthenticated, isLoading } = useIsAuthenticated();
   const { t } = useTranslation();
@@ -238,7 +238,7 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.xl,
   },
   primaryButton: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Brand.accent,
     paddingVertical: Spacing.md,
     borderRadius: BorderRadius.lg,
     alignItems: 'center',
@@ -246,7 +246,7 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#7C3AED',
+    color: Brand.textInverse,
   },
   secondaryButton: {
     paddingVertical: Spacing.md,

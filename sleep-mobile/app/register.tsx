@@ -19,14 +19,14 @@ import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { StorageKeys } from '@/constants/storage';
-import { BorderRadius, Colors, Spacing } from '@/constants/theme';
+import { BorderRadius, Brand, Colors, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useTranslation } from '@/contexts/i18n-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function RegisterScreen() {
-  const colorScheme = useColorScheme() ?? 'light';
+  const colorScheme = useColorScheme() ?? 'dark';
   const colors = Colors[colorScheme];
   const { register, isLoading, error, clearError } = useAuth();
   const { t } = useTranslation();
@@ -366,22 +366,17 @@ export default function RegisterScreen() {
 
             {/* Register Button */}
             <Pressable
-              style={[styles.registerButton, { opacity: isLoading ? 0.7 : 1 }]}
+              style={[styles.registerButton, { backgroundColor: Brand.accent, opacity: isLoading ? 0.7 : 1 }]}
               onPress={handleRegister}
               disabled={isLoading}
             >
-              <LinearGradient
-                colors={[colors.headerGradientStart, colors.headerGradientEnd]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.registerButtonGradient}
-              >
-                {isLoading ? (
-                  <ActivityIndicator color="#FFFFFF" />
-                ) : (
-                  <ThemedText style={styles.registerButtonText}>{t('register.submitBtn')}</ThemedText>
-                )}
-              </LinearGradient>
+              {isLoading ? (
+                <ActivityIndicator color={Brand.textInverse} />
+              ) : (
+                <ThemedText style={[styles.registerButtonText, { color: Brand.textInverse }]}>
+                  {t('register.submitBtn')}
+                </ThemedText>
+              )}
             </Pressable>
 
             {/* Login Link */}
@@ -485,15 +480,11 @@ const styles = StyleSheet.create({
   registerButton: {
     marginTop: Spacing.sm,
     borderRadius: BorderRadius.lg,
-    overflow: 'hidden',
-  },
-  registerButtonGradient: {
     paddingVertical: Spacing.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
   registerButtonText: {
-    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
   },

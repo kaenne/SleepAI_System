@@ -133,11 +133,13 @@ function StatBox({ icon, iconColor, label, value, subValue }: StatBoxProps) {
         <ThemedText style={styles.statBoxValue} numberOfLines={1}>
           {value}
         </ThemedText>
-        {subValue ? (
-          <ThemedText style={[styles.statBoxSub, { color: iconColor }]} numberOfLines={1}>
-            {subValue}
-          </ThemedText>
-        ) : null}
+        {/* Reserve sub-value slot even when empty so all boxes align */}
+        <ThemedText
+          style={[styles.statBoxSub, { color: subValue ? iconColor : 'transparent' }]}
+          numberOfLines={1}
+        >
+          {subValue ?? ' '}
+        </ThemedText>
         <ThemedText style={styles.statBoxLabel} numberOfLines={2}>
           {label}
         </ThemedText>
@@ -365,20 +367,20 @@ export default function ProfileScreen() {
         <Card variant="bordered" animated={false}>
           <View style={styles.summaryRow}>
             <View style={styles.summaryItem}>
-              <ThemedText style={styles.summaryLabel}>{t('profile.avgSleep')}</ThemedText>
+              <ThemedText style={styles.summaryLabel} numberOfLines={1}>{t('profile.avgSleep')}</ThemedText>
               <ThemedText style={styles.summaryValue} numberOfLines={1}>
-                {stats.avgSleepHours ? `${stats.avgSleepHours}h` : t('common.noData')}
+                {stats.avgSleepHours ? `${stats.avgSleepHours}h` : '—'}
               </ThemedText>
             </View>
             <View style={styles.summaryDivider} />
             <View style={styles.summaryItem}>
-              <ThemedText style={styles.summaryLabel}>{t('profile.stressLabel')}</ThemedText>
-              <ThemedText style={styles.summaryValue} numberOfLines={1}>{avgStress}</ThemedText>
+              <ThemedText style={styles.summaryLabel} numberOfLines={1}>{t('profile.stressLabel')}</ThemedText>
+              <ThemedText style={styles.summaryValue} numberOfLines={1}>{avgStress === t('common.noData') ? '—' : avgStress}</ThemedText>
             </View>
             <View style={styles.summaryDivider} />
             <View style={styles.summaryItem}>
-              <ThemedText style={styles.summaryLabel}>{t('profile.sleepGoal')}</ThemedText>
-              <ThemedText style={[styles.summaryValue, { color: Brand.good }]}>8h</ThemedText>
+              <ThemedText style={styles.summaryLabel} numberOfLines={1}>{t('profile.sleepGoal')}</ThemedText>
+              <ThemedText style={[styles.summaryValue, { color: Brand.good }]} numberOfLines={1}>8h</ThemedText>
             </View>
           </View>
 

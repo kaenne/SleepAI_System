@@ -14,7 +14,8 @@
       "infoPlist": {
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": true
-        }
+        },
+        "NSCameraUsageDescription": "Камера нужна для измерения вариабельности пульса (PPG-метод): прижмите палец к камере и вспышка подсветит кровоток."
       }
     },
     "android": {
@@ -28,7 +29,9 @@
         "android.permission.RECEIVE_BOOT_COMPLETED",
         "android.permission.SCHEDULE_EXACT_ALARM",
         "android.permission.USE_EXACT_ALARM",
-        "android.permission.VIBRATE"
+        "android.permission.VIBRATE",
+        "android.permission.CAMERA",
+        "android.permission.FLASHLIGHT"
       ],
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
@@ -41,6 +44,13 @@
     "plugins": [
       "expo-router",
       "expo-notifications",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Камера нужна для измерения вариабельности пульса (PPG-метод): прижмите палец к камере и вспышка подсветит кровоток.",
+          "recordAudioAndroid": false
+        }
+      ],
       [
         "expo-splash-screen",
         {
@@ -58,8 +68,7 @@
       "expo-font"
     ],
     "experiments": {
-      "typedRoutes": true,
-      "reactCompiler": true
+      "typedRoutes": true
     },
     "extra": {
       "router": {},

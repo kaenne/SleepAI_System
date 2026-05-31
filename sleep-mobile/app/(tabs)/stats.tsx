@@ -54,12 +54,10 @@ function scoreColor(score: number): string {
 }
 
 // ── Score arc ────────────────────────────────────────────────────────────────
-function SleepScoreArc({ score, size = 140 }: { score: number; size?: number }) {
-  const strokeWidth = 12;
+function SleepScoreArc({ score, size = 160 }: { score: number; size?: number }) {
+  const strokeWidth = 14;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
-  const arcLength = Math.PI * radius;     // half circle
-  const dashOffset = circumference * 0.25;
 
   const progress = useSharedValue(0);
 
@@ -70,33 +68,23 @@ function SleepScoreArc({ score, size = 140 }: { score: number; size?: number }) 
     });
   }, [score, progress]);
 
-  const trackProps = useAnimatedProps(() => ({
-    strokeDasharray: `${arcLength} ${circumference - arcLength}`,
-    strokeDashoffset: dashOffset,
+  // Full ring. Rotate SVG -90° so the stroke starts at 12 o'clock and grows clockwise.
+  const fillProps = useAnimatedProps(() => ({
+    strokeDashoffset: circumference * (1 - progress.value),
   }));
-
-  const fillProps = useAnimatedProps(() => {
-    const filled = progress.value * arcLength;
-    return {
-      strokeDasharray: `${filled} ${circumference - filled}`,
-      strokeDashoffset: dashOffset,
-    };
-  });
 
   const fill = scoreColor(score);
 
   return (
-    <View style={{ width: size, height: size / 2 + 22, alignItems: 'center' }}>
-      <Svg width={size} height={size} style={{ position: 'absolute', top: 0 }}>
-        <AnimatedCircle
+    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+      <Svg width={size} height={size} style={{ transform: [{ rotate: '-90deg' }] }}>
+        <Circle
           cx={size / 2}
           cy={size / 2}
           r={radius}
           stroke={Brand.borderSoft}
           strokeWidth={strokeWidth}
           fill="transparent"
-          strokeLinecap="round"
-          animatedProps={trackProps}
         />
         <AnimatedCircle
           cx={size / 2}
@@ -106,10 +94,11 @@ function SleepScoreArc({ score, size = 140 }: { score: number; size?: number }) 
           strokeWidth={strokeWidth}
           fill="transparent"
           strokeLinecap="round"
+          strokeDasharray={`${circumference} ${circumference}`}
           animatedProps={fillProps}
         />
       </Svg>
-      <View style={{ position: 'absolute', top: size / 2 - 14, alignItems: 'center' }}>
+      <View style={{ position: 'absolute', alignItems: 'center' }}>
         <ThemedText style={[styles.scoreNumber, { color: Brand.textPrimary }]}>{score}</ThemedText>
         <ThemedText style={styles.scoreUnit}>/ 100</ThemedText>
       </View>
@@ -361,8 +350,8 @@ export default function StatsScreen() {
         <Animated.View entering={FadeInUp.duration(350)}>
           <Card variant="bordered" animated={false}>
             <View style={styles.scoreCardInner}>
-              <ThemedText style={styles.scoreLabel}>{t('stats.sleepScore')}</ThemedText>
-              <SleepScoreArc score={sleepQualityPercentage} size={130} />
+              <ThemedText style={styles.scoreLabel} numberOfLines={1}>{t('stats.sleepScore')}</ThemedText>
+              <SleepScoreArc score={sleepQualityPercentage} size={160} />
               <ThemedText
                 style={[
                   styles.scoreCaption,

@@ -1,6 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as React from 'react';
-import { useColorScheme as useSystemColorScheme } from 'react-native';
 import { StorageKeys } from '@/constants/storage';
 
 const THEME_KEY = StorageKeys.THEME_OVERRIDE;
@@ -16,34 +15,22 @@ type ThemeContextType = {
 
 const ThemeContext = React.createContext<ThemeContextType | null>(null);
 
+// App is dark-only by design — light-mode surfaces were never fully completed.
+// We force dark regardless of system theme or persisted override, and clear
+// any legacy 'light' value left from earlier builds so it can't come back.
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const systemScheme = useSystemColorScheme() ?? 'light';
-  const [override, setOverride] = React.useState<ColorSchemeName | null>(null);
-
-  // Load persisted override
   React.useEffect(() => {
-    AsyncStorage.getItem(THEME_KEY).then((val) => {
-      if (val === 'light' || val === 'dark') {
-        setOverride(val);
-      }
-    });
+    AsyncStorage.removeItem(THEME_KEY).catch(() => {});
   }, []);
 
-  const colorScheme: ColorSchemeName = override ?? systemScheme;
-
-  const setTheme = React.useCallback(async (scheme: ColorSchemeName) => {
-    setOverride(scheme);
-    await AsyncStorage.setItem(THEME_KEY, scheme);
-  }, []);
-
-  const toggleTheme = React.useCallback(() => {
-    const next: ColorSchemeName = colorScheme === 'dark' ? 'light' : 'dark';
-    setTheme(next);
-  }, [colorScheme, setTheme]);
-
-  const value = React.useMemo(
-    () => ({ colorScheme, isDark: colorScheme === 'dark', toggleTheme, setTheme }),
-    [colorScheme, toggleTheme, setTheme],
+  const value = React.useMemo<ThemeContextType>(
+    () => ({
+      colorScheme: 'dark',
+      isDark: true,
+      toggleTheme: () => {},
+      setTheme: () => {},
+    }),
+    [],
   );
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;

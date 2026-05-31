@@ -153,7 +153,7 @@ export function QuickEntryForm({ onEntrySaved }: Props) {
             isDark={isDark}
           />
           <InputField
-            icon="bolt.heart.fill"
+            icon="heart.fill"
             iconColor="#F87171"
             label={t('home.stress')}
             value={stressLevelText}

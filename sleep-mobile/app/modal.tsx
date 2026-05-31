@@ -102,6 +102,8 @@ function SleepSlider({ value, onChange }: { value: number; onChange: (v: number)
       onResponderMove={(e) => handleTouch(e.nativeEvent.locationX)}
       style={styles.sliderTrack}
     >
+      {/* Inactive base track — always visible across full range */}
+      <View pointerEvents="none" style={styles.sliderBaseTrack} />
       {/* Norm zone overlay */}
       <View
         pointerEvents="none"
@@ -157,15 +159,17 @@ function StressDots({ value, onChange }: { value: number; onChange: (n: number) 
 // ── Note chips — toggleable suggestion tags ──────────────────────────────────
 const CHIP_KEYS = ['chip_dreams', 'chip_tired', 'chip_caffeine', 'chip_sport', 'chip_stress'] as const;
 
-function NoteChips({ active, onToggle, t }: { active: Set<string>; onToggle: (k: string) => void; t: (k: string) => string }) {
+function NoteChips({ noteText, onToggle, t }: { noteText: string; onToggle: (text: string) => void; t: (k: string) => string }) {
   return (
     <View style={styles.chipsRow}>
       {CHIP_KEYS.map((key) => {
-        const isOn = active.has(key);
+        const label = t(`modal.${key}`);
+        // A chip is "on" when its label appears in the note text as a whole word.
+        const isOn = new RegExp(`(^|[\\s,])${escapeRegExp(label)}([\\s,]|$)`, 'i').test(noteText);
         return (
           <Pressable
             key={key}
-            onPress={() => onToggle(key)}
+            onPress={() => onToggle(label)}
             style={[
               styles.chip,
               isOn
@@ -174,13 +178,17 @@ function NoteChips({ active, onToggle, t }: { active: Set<string>; onToggle: (k:
             ]}
           >
             <ThemedText style={[styles.chipText, isOn && { color: Brand.accent }]}>
-              {t(`modal.${key}`)}
+              {label}
             </ThemedText>
           </Pressable>
         );
       })}
     </View>
   );
+}
+
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 // ── Screen ───────────────────────────────────────────────────────────────────
@@ -191,7 +199,6 @@ export default function AddSleepEntryModal() {
   const [sleepHours, setSleepHours] = React.useState(7);
   const [stressLevel, setStressLevel] = React.useState(5);
   const [note, setNote] = React.useState('');
-  const [activeChips, setActiveChips] = React.useState<Set<string>>(new Set());
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   const feeling = feelingForSleep(sleepHours);
@@ -200,28 +207,23 @@ export default function AddSleepEntryModal() {
   // Format `7 h`, `7.5 h` — keep mono spacing tight.
   const sleepDisplay = Number.isInteger(sleepHours) ? `${sleepHours} h` : `${sleepHours} h`;
 
-  const toggleChip = React.useCallback((key: string) => {
-    setActiveChips((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
+  // Tapping a chip toggles its label inside the note text directly.
+  // If already present, remove it; otherwise append (comma-separated).
+  const toggleChip = React.useCallback((label: string) => {
+    setNote((prev) => {
+      const re = new RegExp(`(^|[\\s,])${escapeRegExp(label)}([\\s,]|$)`, 'i');
+      if (re.test(prev)) {
+        return prev.replace(re, (_, before, after) => (before && after && after !== '' ? `${before}` : '')).replace(/\s*,\s*,\s*/g, ', ').replace(/^[\s,]+|[\s,]+$/g, '').trim();
+      }
+      const trimmed = prev.trim();
+      return trimmed ? `${trimmed}, ${label}` : label;
     });
   }, []);
-
-  // Build final note: chip tags prepend the typed text.
-  const buildFinalNote = (): string => {
-    const tags = Array.from(activeChips).map((k) => t(`modal.${k}`));
-    const tagPart = tags.length > 0 ? `[${tags.join(', ')}]` : '';
-    const trimmed = note.trim();
-    if (tagPart && trimmed) return `${tagPart} ${trimmed}`;
-    return tagPart || trimmed;
-  };
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
     try {
-      const finalNote = buildFinalNote();
+      const finalNote = note.trim();
       await addEntry({
         sleepHours,
         stressLevel,
@@ -336,7 +338,7 @@ export default function AddSleepEntryModal() {
               style={styles.noteInput}
             />
 
-            <NoteChips active={activeChips} onToggle={toggleChip} t={t} />
+            <NoteChips noteText={note} onToggle={toggleChip} t={t} />
           </Card>
 
           <View style={{ height: 80 }} />
@@ -421,9 +423,20 @@ const styles = StyleSheet.create({
 
   // Sleep slider
   sliderTrack: {
-    height: 24,
+    height: 28,
     justifyContent: 'center',
     paddingVertical: 8,
+  },
+  // Inactive track always visible across the full range
+  sliderBaseTrack: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: '50%',
+    height: 6,
+    marginTop: -3,
+    backgroundColor: Brand.surfaceElevated,
+    borderRadius: 3,
   },
   sliderNormZone: {
     position: 'absolute',
@@ -436,10 +449,10 @@ const styles = StyleSheet.create({
   sliderFill: {
     position: 'absolute',
     top: '50%',
-    height: 4,
-    marginTop: -2,
+    height: 6,
+    marginTop: -3,
     backgroundColor: Brand.accent,
-    borderRadius: 2,
+    borderRadius: 3,
   },
   sliderThumb: {
     position: 'absolute',

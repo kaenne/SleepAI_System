@@ -3,6 +3,7 @@ import * as React from 'react';
 import { api } from '@/services/api';
 import { useAuth } from '@/contexts/auth-context';
 import { StorageKeys } from '@/constants/storage';
+import { generateDemoEntries } from '@/lib/demo-seed';
 
 const STORAGE_KEY_BASE = StorageKeys.JOURNAL_ENTRIES_BASE;
 
@@ -229,6 +230,32 @@ export function useSleepJournal() {
     clearAll: React.useCallback(async () => {
       await writeEntries(key, []);
       setEntries([]);
+    }, [key]),
+    seedDemo: React.useCallback(async () => {
+      const demo = generateDemoEntries();
+      const seeded: SleepStressEntry[] = demo.map((e, i) => ({
+        ...e,
+        id: `demo-${Date.now()}-${i}`,
+      }));
+      // Sort newest-first to match the rest of the app's invariant
+      seeded.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+      await writeEntries(key, seeded);
+      setEntries(seeded);
+
+      // Best-effort push to backend so AI predictions also see the data
+      for (const entry of seeded) {
+        try {
+          await api.createJournalEntry({
+            createdAt: entry.createdAt,
+            sleepHours: entry.sleepHours,
+            stressLevel: entry.stressLevel,
+            note: entry.note,
+          });
+        } catch {
+          // offline or 401 — local data is enough for demo
+        }
+      }
+      return seeded.length;
     }, [key]),
   };
 }

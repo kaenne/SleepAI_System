@@ -59,7 +59,7 @@ export function Btn({
   })();
 
   return (
-    <Animated.View style={[fullWidth ? { flex: 1 } : null, animatedStyle, style]}>
+    <Animated.View style={[fullWidth ? { flexGrow: 1, alignSelf: 'stretch' } : null, animatedStyle, style]}>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={accessibilityLabel ?? label}

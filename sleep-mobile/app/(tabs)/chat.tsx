@@ -396,7 +396,10 @@ export default function ChatScreen() {
       setSuggestions(response.suggestions ?? []);
       if (!conversationId && response.conversationId) setConversationId(response.conversationId);
     } catch {
-      const fallbackKeys = ['fallback1', 'fallback2', 'fallback3', 'fallback4', 'fallback5'] as const;
+      const fallbackKeys = [
+        'fallback1', 'fallback2', 'fallback3', 'fallback4', 'fallback5',
+        'fallback6', 'fallback7', 'fallback8', 'fallback9', 'fallback10',
+      ] as const;
       const aiId = (Date.now() + 1).toString();
       newMessageIds.current.add(aiId);
       setMessages((prev) => [...prev, {
@@ -444,7 +447,8 @@ export default function ChatScreen() {
 
       <KeyboardAvoidingView
         style={styles.chatContainer}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 24}
       >
         {/* ── Messages list ─────────────────────────────────────────── */}
         <ScrollView
@@ -481,7 +485,7 @@ export default function ChatScreen() {
                     message.isUser ? styles.userBubble : styles.aiBubble,
                     {
                       backgroundColor: message.isUser ? Brand.accent : Brand.surface,
-                      borderColor: message.isUser ? 'transparent' : Brand.border,
+                      borderColor: message.isUser ? 'transparent' : Brand.borderSoft,
                     },
                   ]}
                 >
@@ -512,7 +516,7 @@ export default function ChatScreen() {
           {isTyping && (
             <Animated.View
               entering={FadeIn.duration(200)}
-              style={[styles.typingIndicator, { backgroundColor: Brand.surface, borderColor: Brand.border }]}
+              style={[styles.typingIndicator, { backgroundColor: Brand.surface, borderColor: Brand.borderSoft }]}
             >
               <View style={styles.typingDots}>
                 <TypingDot delay={0} color={Brand.accent} />
@@ -539,7 +543,7 @@ export default function ChatScreen() {
               <Pressable
                 key={`chip-${i}-${entry}`}
                 onPress={onTap}
-                style={[styles.quickReply, { backgroundColor: Brand.surface, borderColor: Brand.border }]}
+                style={[styles.quickReply, { backgroundColor: Brand.surface, borderColor: Brand.borderSoft }]}
               >
                 <ThemedText style={styles.quickReplyText}>{label}</ThemedText>
               </Pressable>
@@ -553,8 +557,8 @@ export default function ChatScreen() {
             styles.inputContainer,
             {
               backgroundColor: Brand.surface,
-              borderColor: Brand.border,
-              marginBottom: Math.max(insets.bottom, Spacing.md),
+              borderColor: Brand.borderSoft,
+              marginBottom: Math.max(insets.bottom, Spacing.xs),
             },
           ]}
         >
@@ -709,8 +713,9 @@ const styles = StyleSheet.create({
   // Input
   inputContainer: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
-    padding: 8,
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    paddingVertical: 6,
     marginHorizontal: Spacing.md,
     borderRadius: 22,
     borderWidth: 1,

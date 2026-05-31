@@ -32,11 +32,10 @@ export default function HomeScreen() {
   const { entries } = useSleepJournal();
   const { t, tArray } = useTranslation();
   const { status: backendStatus } = useBackendStatus();
-  const { latestStress, recordStress, measureHrv, isLoading: hrvLoading } = useStressMonitor();
+  const { latestStress } = useStressMonitor();
   const insets = useSafeAreaInsets();
 
   const [activeTab, setActiveTab] = React.useState<HomeTab>(0);
-  const [isMeasuringHrv, setIsMeasuringHrv] = React.useState(false);
 
   // Online status colour resolves once — three discrete states.
   const onlineState = backendStatus.isChecking
@@ -45,18 +44,9 @@ export default function HomeScreen() {
       ? { color: Brand.good, label: t('home.online') }
       : { color: Brand.textMuted, label: t('home.offline') };
 
-  const handleMeasureHrv = React.useCallback(async () => {
-    if (isMeasuringHrv || hrvLoading) return;
-    setIsMeasuringHrv(true);
-    try {
-      const hrv = await measureHrv();
-      await recordStress(hrv);
-    } catch {
-      // UI keeps the previous reading; nothing actionable to show.
-    } finally {
-      setIsMeasuringHrv(false);
-    }
-  }, [isMeasuringHrv, hrvLoading, measureHrv, recordStress]);
+  const handleMeasureHrv = React.useCallback(() => {
+    router.push('/hrv-capture' as any);
+  }, []);
 
   const todayTip = React.useMemo(() => {
     const tips = tArray('home.tips');
@@ -157,7 +147,7 @@ export default function HomeScreen() {
           contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 }]}
           showsVerticalScrollIndicator={false}
         >
-          <Animated.View entering={FadeIn.duration(250)}>
+          <Animated.View entering={FadeIn.duration(250)} style={{ gap: Spacing.md }}>
             <HomeActionBar
               statsLabel={t('home.statsTile')}
               addLabel={t('home.addTile')}
@@ -241,24 +231,41 @@ export default function HomeScreen() {
 
               <View style={styles.hrvMetaRow}>
                 <View style={styles.hrvMetaCell}>
-                  <ThemedText style={[styles.hrvMetaVal, { color: Brand.accent }]}>
-                    {latestStress?.hrvScore != null ? Math.round(latestStress.hrvScore) : t('common.noData')}
+                  <ThemedText
+                    style={[
+                      styles.hrvMetaVal,
+                      { color: latestStress?.hrvScore != null ? Brand.accent : Brand.textMuted },
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {latestStress?.hrvScore != null ? Math.round(latestStress.hrvScore) : '—'}
                   </ThemedText>
                   <ThemedText style={styles.hrvMetaLabel}>HRV</ThemedText>
                 </View>
                 <View style={styles.hrvMetaCell}>
-                  <ThemedText style={[styles.hrvMetaVal, { color: Brand.info, fontSize: 14 }]} numberOfLines={1}>
+                  <ThemedText
+                    style={[
+                      styles.hrvMetaVal,
+                      {
+                        color:
+                          latestStress?.stressLevel && latestStress.stressLevel !== 'UNKNOWN'
+                            ? Brand.info
+                            : Brand.textMuted,
+                        fontSize: latestStress?.stressLevel && latestStress.stressLevel !== 'UNKNOWN' ? 14 : 18,
+                      },
+                    ]}
+                    numberOfLines={1}
+                  >
                     {latestStress?.stressLevel && latestStress.stressLevel !== 'UNKNOWN'
                       ? t(`stress.level_${latestStress.stressLevel.toLowerCase()}`)
-                      : t('common.noData')}
+                      : '—'}
                   </ThemedText>
                   <ThemedText style={styles.hrvMetaLabel}>{t('stress.levelShort')}</ThemedText>
                 </View>
-                <View style={{ flex: 1.6 }}>
+                <View style={{ flex: 1.8 }}>
                   <Btn
-                    label={isMeasuringHrv ? t('stress.measuring') : t('stress.startMeasure')}
+                    label={t('stress.startMeasure')}
                     onPress={handleMeasureHrv}
-                    disabled={isMeasuringHrv}
                     leading={<Ico.Pulse size={16} color={Brand.textInverse} />}
                   />
                 </View>

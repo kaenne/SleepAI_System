@@ -1,13 +1,11 @@
-import { LinearGradient } from 'expo-linear-gradient';
 import * as React from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { Badge } from '@/components/ui/badge';
-import { IconSymbol } from '@/components/ui/icon-symbol';
+import { Ico } from '@/components/ui/ico';
 import { ThemedText } from '@/components/themed-text';
-import { Colors, Spacing } from '@/constants/theme';
+import { Brand, Spacing, tonal, tonalBorder } from '@/constants/theme';
 import { useTranslation } from '@/contexts/i18n-context';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 
 type Props = {
   todaySleep: number;
@@ -16,131 +14,128 @@ type Props = {
   currentStreak: number;
 };
 
+type StressTier = 'low' | 'medium' | 'high';
+
 export function QuickStatsRow({ todaySleep, sleepQuality, stressLevel, currentStreak }: Props) {
-  const colorScheme = useColorScheme() ?? 'light';
-  const colors = Colors[colorScheme];
   const { t } = useTranslation();
 
-  // Card gradient + accent must reflect the actual stress level — a green card
-  // for "Низкий" was previously rendered red, which read as a danger signal.
-  const stressTier: 'low' | 'medium' | 'high' =
+  const stressTier: StressTier =
     stressLevel <= 4 ? 'low' : stressLevel <= 6 ? 'medium' : 'high';
 
-  const stressGradient: readonly [string, string] = (() => {
-    if (colorScheme === 'dark') {
-      if (stressTier === 'low') return ['#064e3b', '#065f46'] as const;       // green
-      if (stressTier === 'medium') return ['#7c2d12', '#9a3412'] as const;   // amber
-      return ['#450a0a', '#7f1d1d'] as const;                                  // red
-    }
-    if (stressTier === 'low') return ['#d1fae5', '#a7f3d0'] as const;
-    if (stressTier === 'medium') return ['#ffedd5', '#fed7aa'] as const;
-    return ['#ffe4e6', '#fecdd3'] as const;
-  })();
+  const stressColor =
+    stressTier === 'low' ? Brand.good :
+    stressTier === 'medium' ? Brand.warn :
+    '#ff6b6b';
 
-  const stressValueColor =
-    stressTier === 'low' ? colors.success :
-    stressTier === 'medium' ? colors.warning :
-    colors.danger;
-
-  const stressIconColor =
-    stressTier === 'low' ? colors.success :
-    stressTier === 'medium' ? colors.warning :
-    colors.danger;
+  const stressLabel =
+    stressTier === 'low' ? t('home.stress_low') :
+    stressTier === 'medium' ? t('home.stress_medium') :
+    t('home.stress_high');
 
   return (
-    <View style={styles.statsRow}>
-      <LinearGradient
-        colors={[
-          colorScheme === 'dark' ? '#1e1b4b' : '#e0e7ff',
-          colorScheme === 'dark' ? '#312e81' : '#c7d2fe',
-        ]}
-        style={styles.gradientCard}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      >
-        <View style={styles.cardIconWrapperAbsolute}>
-          <IconSymbol name="moon.fill" size={40} color={`${colors.tint}20`} />
+    <View style={styles.row}>
+      {/* Sleep card */}
+      <View style={styles.card}>
+        <View style={[styles.accentBar, { backgroundColor: Brand.info }]} />
+        <View style={styles.cardInner}>
+          <View style={styles.headRow}>
+            <View style={[styles.iconChip, { backgroundColor: tonal(Brand.info), borderColor: tonalBorder(Brand.info) }]}>
+              <Ico.Moon size={14} color={Brand.info} />
+            </View>
+            <ThemedText style={styles.label}>{t('home.sleepToday')}</ThemedText>
+          </View>
+          <ThemedText style={[styles.value, { color: Brand.info }]}>{todaySleep}h</ThemedText>
+          <View style={styles.badgeRow}>
+            <Badge
+              label={sleepQuality === 'well-rested' ? t('home.good') : t('home.bad')}
+              variant={sleepQuality === 'well-rested' ? 'success' : 'warning'}
+              size="sm"
+              animated={false}
+            />
+            {currentStreak > 0 && (
+              <Badge
+                label={t('home.days').replace('{{n}}', String(currentStreak))}
+                variant="info"
+                size="sm"
+                animated={false}
+              />
+            )}
+          </View>
         </View>
-        <ThemedText style={styles.quickStatLabel}>{t('home.sleepToday')}</ThemedText>
-        <ThemedText style={[styles.quickStatValue, { color: colors.tint }]}>{todaySleep}h</ThemedText>
-        <View style={styles.badgeRow}>
-          <Badge
-            label={sleepQuality === 'well-rested' ? t('home.good') : t('home.bad')}
-            variant={sleepQuality === 'well-rested' ? 'success' : 'warning'}
-            size="sm"
-            animated={false}
-          />
-          <Badge
-            label={`🔥 ${t('home.days').replace('{{n}}', String(currentStreak))}`}
-            variant="info"
-            size="sm"
-            animated={false}
-          />
-        </View>
-      </LinearGradient>
+      </View>
 
-      <LinearGradient
-        colors={stressGradient}
-        style={styles.gradientCard}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      >
-        <View style={styles.cardIconWrapperAbsolute}>
-          <IconSymbol name="heart.fill" size={40} color={`${stressIconColor}20`} />
+      {/* Stress card */}
+      <View style={styles.card}>
+        <View style={[styles.accentBar, { backgroundColor: stressColor }]} />
+        <View style={styles.cardInner}>
+          <View style={styles.headRow}>
+            <View style={[styles.iconChip, { backgroundColor: tonal(stressColor), borderColor: tonalBorder(stressColor) }]}>
+              <Ico.Heart size={14} color={stressColor} />
+            </View>
+            <ThemedText style={styles.label}>{t('home.stressLabel')}</ThemedText>
+          </View>
+          <ThemedText style={[styles.value, { color: stressColor }]} numberOfLines={1}>
+            {stressLabel}
+          </ThemedText>
+          <View style={styles.badgeRow}>
+            <Badge label={`${stressLevel}/10`} variant="default" size="sm" animated={false} />
+          </View>
         </View>
-        <ThemedText style={styles.quickStatLabel}>{t('home.stressLabel')}</ThemedText>
-        <ThemedText style={[styles.quickStatValue, { color: stressValueColor }]}>
-          {stressTier === 'low'
-            ? t('home.stress_low')
-            : stressTier === 'medium'
-            ? t('home.stress_medium')
-            : t('home.stress_high')}
-        </ThemedText>
-        <View style={styles.badgeRow}>
-          <Badge label="❤️ 68 bpm" variant="default" size="sm" animated={false} />
-        </View>
-      </LinearGradient>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  statsRow: {
+  row: {
     flexDirection: 'row',
     gap: Spacing.md,
   },
-  gradientCard: {
+  card: {
     flex: 1,
-    borderRadius: 24,
-    padding: Spacing.lg,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: Brand.borderSoft,
+    backgroundColor: Brand.surface,
+    flexDirection: 'row',
     overflow: 'hidden',
-    position: 'relative',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
   },
-  cardIconWrapperAbsolute: {
-    position: 'absolute',
-    top: -10,
-    right: -10,
-    opacity: 0.5,
+  accentBar: {
+    width: 3,
   },
-  quickStatLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    opacity: 0.8,
-    marginBottom: 4,
+  cardInner: {
+    flex: 1,
+    padding: Spacing.md,
+    gap: 8,
   },
-  quickStatValue: {
-    fontSize: 28,
-    fontWeight: '800',
-    marginBottom: 12,
+  headRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  iconChip: {
+    width: 24,
+    height: 24,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  label: {
+    fontSize: 12,
+    color: Brand.textSecondary,
+    fontWeight: '500',
+    flex: 1,
+  },
+  value: {
+    fontSize: 24,
+    fontWeight: '700',
+    letterSpacing: -0.5,
   },
   badgeRow: {
     flexDirection: 'row',
     gap: 6,
     flexWrap: 'wrap',
+    marginTop: 2,
   },
 });

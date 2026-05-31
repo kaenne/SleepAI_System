@@ -13,8 +13,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Brand, Colors, BorderRadius, Spacing } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Brand, BorderRadius, Spacing } from '@/constants/theme';
 import { scheduleWakeUpAlarm, cancelWakeUpAlarm } from '@/hooks/use-notifications';
 import { api } from '@/services/api';
 import { useTranslation } from '@/contexts/i18n-context';
@@ -30,9 +29,6 @@ type SleepSession = {
 };
 
 export function SleepTimer() {
-  const colorScheme = useColorScheme() ?? 'dark';
-  const isDark = colorScheme === 'dark';
-  const colors = Colors[colorScheme];
   const { t } = useTranslation();
   
   const [session, setSession] = useState<SleepSession | null>(null);
@@ -77,11 +73,11 @@ export function SleepTimer() {
     return () => clearInterval(interval);
   }, [session]);
   
-  // Pulse animation when active
+  // Subtle breathing animation on the moon icon when sleeping
   useEffect(() => {
     if (session?.isActive) {
       pulseScale.value = withRepeat(
-        withTiming(1.1, { duration: 1500, easing: Easing.inOut(Easing.ease) }),
+        withTiming(1.06, { duration: 2200, easing: Easing.inOut(Easing.ease) }),
         -1,
         true
       );
@@ -184,67 +180,64 @@ export function SleepTimer() {
   };
   
   return (
-    <View style={[styles.container, { backgroundColor: isDark ? Brand.surface : '#FFFFFF', borderColor: isDark ? Brand.border : '#E5E7EB' }]}>
-      {/* Header row */}
-      <View style={styles.header}>
-        <View style={[styles.headerIcon, { backgroundColor: isDark ? '#1A2A4A' : '#EFF6FF' }]}>
-          <ThemedText style={{ fontSize: 18 }}>🌙</ThemedText>
-        </View>
-        <View style={{ flex: 1 }}>
-          <ThemedText style={[styles.title, { color: isDark ? Brand.textPrimary : '#1F2937' }]}>
-            {session?.isActive ? t('timer.titleActive') : t('timer.titleInactive')}
-          </ThemedText>
-          {session?.isActive && (
-            <ThemedText style={[styles.subtitle, { color: isDark ? Brand.textMuted : '#9CA3AF' }]}>
-              {t('timer.startedAt').replace('{{time}}', formatStartTime())}
-              {session.wakeUpHour !== undefined
-                ? `  ·  ${t('timer.alarm')} ${String(session.wakeUpHour).padStart(2,'0')}:${String(session.wakeUpMinute ?? 0).padStart(2,'0')}`
-                : ''}
-            </ThemedText>
-          )}
-        </View>
-        {session?.isActive && (
-          <View style={[styles.liveBadge, { backgroundColor: '#1A3B2E' }]}>
-            <View style={styles.liveDot} />
-            <ThemedText style={styles.liveText}>LIVE</ThemedText>
-          </View>
-        )}
-      </View>
-
+    <View style={styles.container}>
       {session?.isActive ? (
-        <Animated.View entering={FadeIn} style={styles.activeSession}>
-          {/* Big blue timer */}
-          <Animated.View style={[styles.timerContainer, animatedStyle]}>
-            <ThemedText style={[styles.timer, { color: Brand.info }]}>
-              {elapsed}
-            </ThemedText>
+        <Animated.View entering={FadeIn.duration(350)} style={styles.activeSession}>
+          {/* Breathing moon icon */}
+          <Animated.View style={[styles.moonHalo, animatedStyle]}>
+            <IconSymbol name="moon.fill" size={44} color={Brand.accent} />
           </Animated.View>
 
-          {/* Wake up button — full width, solid blue */}
+          {/* Huge elapsed timer */}
+          <ThemedText style={styles.timer}>{elapsed}</ThemedText>
+
+          {/* Meta line — start + alarm */}
+          <View style={styles.metaRow}>
+            <View style={styles.metaItem}>
+              <ThemedText style={styles.metaLabel}>{t('timer.startedLabel')}</ThemedText>
+              <ThemedText style={styles.metaValue}>{formatStartTime()}</ThemedText>
+            </View>
+            {session.wakeUpHour !== undefined && (
+              <>
+                <View style={styles.metaDivider} />
+                <View style={styles.metaItem}>
+                  <ThemedText style={styles.metaLabel}>{t('timer.alarm')}</ThemedText>
+                  <ThemedText style={styles.metaValue}>
+                    {String(session.wakeUpHour).padStart(2,'0')}:{String(session.wakeUpMinute ?? 0).padStart(2,'0')}
+                  </ThemedText>
+                </View>
+              </>
+            )}
+          </View>
+
+          {/* Wake up CTA */}
           <Pressable
             onPress={handleWakeUp}
             disabled={isLoading}
-            style={[styles.wakeBtn, { backgroundColor: Brand.info, opacity: isLoading ? 0.7 : 1 }]}
+            style={[styles.wakeBtn, isLoading && { opacity: 0.6 }]}
           >
-            <ThemedText style={{ fontSize: 20, marginRight: 8 }}>⏰</ThemedText>
+            <IconSymbol name="sun.max.fill" size={18} color={Brand.textInverse} />
             <ThemedText style={styles.wakeBtnText}>
               {isLoading ? t('timer.saving') : t('timer.wakeUp')}
             </ThemedText>
           </Pressable>
         </Animated.View>
       ) : (
-        <Animated.View entering={FadeIn} style={styles.inactiveSession}>
-          <ThemedText style={[styles.description, { color: isDark ? Brand.textMuted : '#9CA3AF' }]}>
-            {t('timer.startManually')}
-          </ThemedText>
+        <Animated.View entering={FadeIn.duration(350)} style={styles.inactiveSession}>
+          <View style={styles.moonHaloIdle}>
+            <IconSymbol name="moon.fill" size={36} color={Brand.accent} />
+          </View>
+
+          <ThemedText style={styles.idleTitle}>{t('timer.titleInactive')}</ThemedText>
+          <ThemedText style={styles.idleSubtitle}>{t('timer.startManually')}</ThemedText>
 
           <Pressable
             onPress={handleStartPress}
             disabled={isLoading}
-            style={[styles.startBtn, { backgroundColor: isDark ? '#1E3A2E' : '#DCFCE7', opacity: isLoading ? 0.7 : 1 }]}
+            style={[styles.startBtn, isLoading && { opacity: 0.6 }]}
           >
-            <IconSymbol name="moon.fill" size={18} color={Brand.good} />
-            <ThemedText style={[styles.startBtnText, { color: Brand.good }]}>
+            <IconSymbol name="moon.fill" size={16} color={Brand.textInverse} />
+            <ThemedText style={styles.startBtnText}>
               {isLoading ? t('timer.starting') : t('timer.startSession')}
             </ThemedText>
           </Pressable>
@@ -254,46 +247,48 @@ export function SleepTimer() {
       {/* ── Будильник модалка ── */}
       <Modal visible={showAlarmPicker} transparent animationType="fade" onRequestClose={() => setShowAlarmPicker(false)}>
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalCard, { backgroundColor: isDark ? Brand.surface : '#FFFFFF', borderColor: isDark ? Brand.border : '#E5E7EB' }]}>
-            <ThemedText style={[styles.modalTitle, { color: isDark ? Brand.textPrimary : '#1F2937' }]}>{t('timer.alarmTitle')}</ThemedText>
-            <ThemedText style={[styles.hint, { color: isDark ? Brand.textMuted : '#9CA3AF', marginBottom: Spacing.md }]}>
-              {t('timer.alarmHint')}
-            </ThemedText>
+          <View style={styles.modalCard}>
+            <ThemedText style={styles.modalTitle}>{t('timer.alarmTitle')}</ThemedText>
+            <ThemedText style={styles.modalHint}>{t('timer.alarmHint')}</ThemedText>
 
             <View style={styles.timeRow}>
               <View style={styles.timeColumn}>
-                <Pressable style={[styles.timeBtn, { backgroundColor: isDark ? Brand.border : '#F3F4F6' }]} onPress={() => setAlarmHour(h => (h + 1) % 24)}>
-                  <IconSymbol name="chevron.up" size={20} color={colors.tint} />
+                <Pressable style={styles.timeBtn} onPress={() => setAlarmHour(h => (h + 1) % 24)}>
+                  <IconSymbol name="chevron.up" size={20} color={Brand.accent} />
                 </Pressable>
-                <View style={[styles.timeDisplay, { backgroundColor: isDark ? Brand.background : '#F9FAFB', borderColor: isDark ? Brand.border : '#E5E7EB' }]}>
-                  <ThemedText style={[styles.timeValue, { color: Brand.info }]}>{String(alarmHour).padStart(2,'0')}</ThemedText>
+                <View style={styles.timeDisplay}>
+                  <ThemedText style={styles.timeValue}>{String(alarmHour).padStart(2,'0')}</ThemedText>
                 </View>
-                <Pressable style={[styles.timeBtn, { backgroundColor: isDark ? Brand.border : '#F3F4F6' }]} onPress={() => setAlarmHour(h => (h - 1 + 24) % 24)}>
-                  <IconSymbol name="chevron.down" size={20} color={colors.tint} />
+                <Pressable style={styles.timeBtn} onPress={() => setAlarmHour(h => (h - 1 + 24) % 24)}>
+                  <IconSymbol name="chevron.down" size={20} color={Brand.accent} />
                 </Pressable>
               </View>
-              <ThemedText style={[styles.timeColon, { color: Brand.info }]}>:</ThemedText>
+              <ThemedText style={styles.timeColon}>:</ThemedText>
               <View style={styles.timeColumn}>
-                <Pressable style={[styles.timeBtn, { backgroundColor: isDark ? Brand.border : '#F3F4F6' }]} onPress={() => setAlarmMinute(m => (m + 5) % 60)}>
-                  <IconSymbol name="chevron.up" size={20} color={colors.tint} />
+                <Pressable style={styles.timeBtn} onPress={() => setAlarmMinute(m => (m + 5) % 60)}>
+                  <IconSymbol name="chevron.up" size={20} color={Brand.accent} />
                 </Pressable>
-                <View style={[styles.timeDisplay, { backgroundColor: isDark ? Brand.background : '#F9FAFB', borderColor: isDark ? Brand.border : '#E5E7EB' }]}>
-                  <ThemedText style={[styles.timeValue, { color: Brand.info }]}>{String(alarmMinute).padStart(2,'0')}</ThemedText>
+                <View style={styles.timeDisplay}>
+                  <ThemedText style={styles.timeValue}>{String(alarmMinute).padStart(2,'0')}</ThemedText>
                 </View>
-                <Pressable style={[styles.timeBtn, { backgroundColor: isDark ? Brand.border : '#F3F4F6' }]} onPress={() => setAlarmMinute(m => (m - 5 + 60) % 60)}>
-                  <IconSymbol name="chevron.down" size={20} color={colors.tint} />
+                <Pressable style={styles.timeBtn} onPress={() => setAlarmMinute(m => (m - 5 + 60) % 60)}>
+                  <IconSymbol name="chevron.down" size={20} color={Brand.accent} />
                 </Pressable>
               </View>
             </View>
 
             <View style={styles.modalActions}>
-              <Pressable style={[styles.modalBtn, { backgroundColor: isDark ? Brand.border : '#F3F4F6' }]}
-                onPress={() => { setShowAlarmPicker(false); startSleep(false); }}>
-                <ThemedText style={{ color: isDark ? Brand.textPrimary : '#374151', fontWeight: '600' }}>{t('timer.noAlarm')}</ThemedText>
+              <Pressable
+                style={[styles.modalBtn, styles.modalBtnSecondary]}
+                onPress={() => { setShowAlarmPicker(false); startSleep(false); }}
+              >
+                <ThemedText style={styles.modalBtnSecondaryText}>{t('timer.noAlarm')}</ThemedText>
               </Pressable>
-              <Pressable style={[styles.modalBtn, { backgroundColor: Brand.info }]}
-                onPress={() => { setShowAlarmPicker(false); startSleep(true); }}>
-                <ThemedText style={{ color: Brand.textInverse, fontWeight: '700' }}>{t('timer.setAlarm')}</ThemedText>
+              <Pressable
+                style={[styles.modalBtn, styles.modalBtnPrimary]}
+                onPress={() => { setShowAlarmPicker(false); startSleep(true); }}
+              >
+                <ThemedText style={styles.modalBtnPrimaryText}>{t('timer.setAlarm')}</ThemedText>
               </Pressable>
             </View>
           </View>
@@ -303,37 +298,43 @@ export function SleepTimer() {
       {/* ── Утренняя обратная связь ── */}
       <Modal visible={showFeedback} transparent animationType="fade" onRequestClose={() => stopSleep(null)}>
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalCard, { backgroundColor: isDark ? Brand.surface : '#FFFFFF', borderColor: isDark ? Brand.border : '#E5E7EB' }]}>
-            <ThemedText style={[styles.modalTitle, { color: isDark ? Brand.textPrimary : '#1F2937' }]}>{t('timer.goodMorning')}</ThemedText>
-            <ThemedText style={[styles.hint, { color: isDark ? Brand.textMuted : '#9CA3AF', marginBottom: Spacing.lg }]}>
-              {t('timer.feedbackPrompt')}
-            </ThemedText>
+          <View style={styles.modalCard}>
+            <ThemedText style={styles.modalTitle}>{t('timer.goodMorning')}</ThemedText>
+            <ThemedText style={styles.modalHint}>{t('timer.feedbackPrompt')}</ThemedText>
 
             <View style={styles.starsRow}>
               {[1,2,3,4,5].map(star => (
                 <Pressable key={star} onPress={() => setFeedbackRating(star)} style={styles.starBtn}>
-                  <ThemedText style={[styles.starText, { opacity: feedbackRating !== null && star <= feedbackRating ? 1 : 0.3 }]}>
-                    ⭐
-                  </ThemedText>
+                  <IconSymbol
+                    name="star.fill"
+                    size={32}
+                    color={feedbackRating !== null && star <= feedbackRating ? Brand.warn : Brand.border}
+                  />
                 </Pressable>
               ))}
             </View>
 
             {feedbackRating !== null && (
-              <ThemedText style={[{ color: colors.tint, textAlign: 'center', marginBottom: Spacing.md }]}>
+              <ThemedText style={styles.ratingLabel}>
                 {feedbackRating <= 2 ? t('timer.rating_bad') : feedbackRating === 3 ? t('timer.rating_ok') : feedbackRating === 4 ? t('timer.rating_good') : t('timer.rating_great')}
               </ThemedText>
             )}
 
             <View style={styles.modalActions}>
-              <Pressable style={[styles.modalBtn, { backgroundColor: isDark ? Brand.border : '#F3F4F6' }]}
-                onPress={() => stopSleep(null)}>
-                <ThemedText style={{ color: isDark ? Brand.textPrimary : '#374151', fontWeight: '600' }}>{t('timer.skip')}</ThemedText>
+              <Pressable
+                style={[styles.modalBtn, styles.modalBtnSecondary]}
+                onPress={() => stopSleep(null)}
+              >
+                <ThemedText style={styles.modalBtnSecondaryText}>{t('timer.skip')}</ThemedText>
               </Pressable>
-              <Pressable style={[styles.modalBtn, { backgroundColor: feedbackRating ? colors.tint : (isDark ? Brand.border : '#E5E7EB') }]}
+              <Pressable
+                style={[styles.modalBtn, feedbackRating ? styles.modalBtnPrimary : styles.modalBtnDisabled]}
                 disabled={!feedbackRating}
-                onPress={() => stopSleep(feedbackRating)}>
-                <ThemedText style={{ color: '#fff', fontWeight: '700' }}>{t('common.save')}</ThemedText>
+                onPress={() => stopSleep(feedbackRating)}
+              >
+                <ThemedText style={feedbackRating ? styles.modalBtnPrimaryText : styles.modalBtnSecondaryText}>
+                  {t('common.save')}
+                </ThemedText>
               </Pressable>
             </View>
           </View>
@@ -345,104 +346,131 @@ export function SleepTimer() {
 
 const styles = StyleSheet.create({
   container: {
-    borderRadius: 20,
+    borderRadius: 24,
     padding: Spacing.lg,
+    paddingVertical: 28,
     borderWidth: 1,
+    backgroundColor: Brand.surface,
+    borderColor: Brand.border,
     marginVertical: Spacing.sm,
   },
-  header: {
-    flexDirection: 'row',
+  // Active session
+  activeSession: {
     alignItems: 'center',
-    gap: Spacing.sm,
-    marginBottom: Spacing.md,
+    gap: 18,
   },
-  headerIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+  moonHalo: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: Brand.accentSoft,
+    borderWidth: 1,
+    borderColor: Brand.accentBorder,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  title: {
-    fontSize: 16,
-    fontWeight: '700',
-    lineHeight: 20,
-  },
-  subtitle: {
-    fontSize: 12,
-    marginTop: 2,
+  timer: {
+    // System font is intentional — JetBrainsMono failed to load on some Android
+    // builds and digits rendered as tofu/box glyphs.
+    fontSize: 56,
+    fontWeight: '300',
     fontVariant: ['tabular-nums'],
+    color: Brand.textPrimary,
+    textAlign: 'center',
+    lineHeight: 64,
   },
-  liveBadge: {
+  metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 20,
+    gap: 18,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 12,
+    borderRadius: 14,
+    backgroundColor: Brand.surfaceElevated,
+    borderWidth: 1,
+    borderColor: Brand.borderSoft,
   },
-  liveDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: Brand.good,
-  },
-  liveText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: Brand.good,
-    letterSpacing: 0.5,
-  },
-  activeSession: {
+  metaItem: {
     alignItems: 'center',
-    gap: Spacing.md,
+    gap: 2,
   },
-  inactiveSession: {
-    alignItems: 'center',
-    gap: Spacing.md,
+  metaDivider: {
+    width: 1,
+    height: 22,
+    backgroundColor: Brand.borderSoft,
   },
-  timerContainer: {
-    paddingVertical: Spacing.lg,
+  metaLabel: {
+    fontSize: 10,
+    color: Brand.textMuted,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
   },
-  timer: {
-    fontSize: 64,
-    fontWeight: '700',
+  metaValue: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: Brand.textPrimary,
     fontVariant: ['tabular-nums'],
-    letterSpacing: 2,
   },
   wakeBtn: {
     width: '100%',
-    height: 54,
-    borderRadius: 14,
+    height: 52,
+    borderRadius: 16,
+    backgroundColor: Brand.accent,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 8,
+    marginTop: 4,
   },
   wakeBtnText: {
     fontSize: 16,
     fontWeight: '700',
     color: Brand.textInverse,
+    letterSpacing: 0.3,
+  },
+  // Inactive session
+  inactiveSession: {
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 8,
+  },
+  moonHaloIdle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: Brand.accentSoft,
+    borderWidth: 1,
+    borderColor: Brand.accentBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  idleTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: Brand.textPrimary,
+    textAlign: 'center',
+  },
+  idleSubtitle: {
+    fontSize: 13,
+    color: Brand.textSecondary,
+    textAlign: 'center',
+    marginBottom: 12,
   },
   startBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    paddingHorizontal: 24,
-    paddingVertical: 14,
+    paddingHorizontal: 28,
+    height: 48,
     borderRadius: 14,
+    backgroundColor: Brand.accent,
   },
   startBtnText: {
     fontSize: 15,
     fontWeight: '700',
-  },
-  description: {
-    textAlign: 'center',
-    marginBottom: Spacing.sm,
-    fontSize: 14,
-  },
-  hint: {
-    fontSize: 12,
-    textAlign: 'center',
+    color: Brand.textInverse,
+    letterSpacing: 0.3,
   },
   // Modal shared
   modalOverlay: {
@@ -455,15 +483,24 @@ const styles = StyleSheet.create({
   modalCard: {
     width: '100%',
     maxWidth: 360,
+    backgroundColor: Brand.surface,
     borderRadius: BorderRadius.xl,
     padding: Spacing.xl,
     alignItems: 'center',
     borderWidth: 1,
+    borderColor: Brand.border,
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: '700',
-    marginBottom: Spacing.xs,
+    color: Brand.textPrimary,
+    marginBottom: 6,
+  },
+  modalHint: {
+    fontSize: 13,
+    color: Brand.textSecondary,
+    textAlign: 'center',
+    marginBottom: Spacing.md,
   },
   modalActions: {
     flexDirection: 'row',
@@ -473,9 +510,34 @@ const styles = StyleSheet.create({
   },
   modalBtn: {
     flex: 1,
-    paddingVertical: Spacing.sm,
+    height: 48,
     borderRadius: BorderRadius.lg,
     alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalBtnPrimary: {
+    backgroundColor: Brand.accent,
+  },
+  modalBtnPrimaryText: {
+    color: Brand.textInverse,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  modalBtnSecondary: {
+    backgroundColor: Brand.surfaceElevated,
+    borderWidth: 1,
+    borderColor: Brand.border,
+  },
+  modalBtnSecondaryText: {
+    color: Brand.textSecondary,
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  modalBtnDisabled: {
+    backgroundColor: Brand.surfaceElevated,
+    borderWidth: 1,
+    borderColor: Brand.borderSoft,
+    opacity: 0.6,
   },
   // Time picker
   timeRow: {
@@ -492,37 +554,48 @@ const styles = StyleSheet.create({
     width: 44,
     height: 36,
     borderRadius: BorderRadius.md,
+    backgroundColor: Brand.accentSoft,
+    borderWidth: 1,
+    borderColor: Brand.accentBorder,
     alignItems: 'center',
     justifyContent: 'center',
   },
   timeDisplay: {
-    width: 64,
-    height: 56,
+    width: 72,
+    height: 60,
     borderRadius: BorderRadius.md,
+    backgroundColor: Brand.surfaceElevated,
+    borderWidth: 1,
+    borderColor: Brand.border,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
   },
   timeValue: {
-    fontSize: 28,
+    fontSize: 30,
     fontWeight: '700',
+    color: Brand.textPrimary,
     fontVariant: ['tabular-nums'],
   },
   timeColon: {
-    fontSize: 28,
+    fontSize: 30,
     fontWeight: '700',
+    color: Brand.textMuted,
     marginBottom: 4,
   },
   // Stars feedback
   starsRow: {
     flexDirection: 'row',
     gap: Spacing.sm,
-    marginBottom: Spacing.md,
+    marginBottom: Spacing.sm,
   },
   starBtn: {
-    padding: Spacing.xs,
+    padding: 4,
   },
-  starText: {
-    fontSize: 36,
+  ratingLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Brand.accent,
+    textAlign: 'center',
+    marginBottom: Spacing.sm,
   },
 });

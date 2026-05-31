@@ -3,6 +3,7 @@ package kz.sleepai.backend.config;
 import io.swagger.v3.oas.annotations.OpenAPIDefinition;
 import io.swagger.v3.oas.annotations.enums.SecuritySchemeType;
 import io.swagger.v3.oas.annotations.info.Info;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.security.SecurityScheme;
 import org.springframework.context.annotation.Configuration;
 
@@ -12,7 +13,8 @@ import org.springframework.context.annotation.Configuration;
                 title = "Sleep Analysis API",
                 version = "1.0",
                 description = "API for sleep quality analysis using AI"
-        )
+        ),
+        security = @SecurityRequirement(name = "Bearer Authentication")
 )
 @SecurityScheme(
         name = "Bearer Authentication",

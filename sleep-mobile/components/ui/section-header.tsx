@@ -13,7 +13,7 @@ import { Brand, Type } from '@/constants/theme';
 export function SectionHeader({ title }: { title: string }) {
   return (
     <View style={styles.row} accessibilityRole="header">
-      <ThemedText style={styles.title}>{title}</ThemedText>
+      <ThemedText style={styles.title} numberOfLines={1} ellipsizeMode="tail">{title}</ThemedText>
       <View style={styles.rule} />
     </View>
   );
