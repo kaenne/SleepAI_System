@@ -302,6 +302,15 @@ export const api = {
     );
   },
 
+  async forgotPassword(email: string): Promise<void> {
+    await requestJson<{ message?: string }>('/api/auth/forgot-password', {
+      method: 'POST',
+      requireAuth: false,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+  },
+
   // ============ AI Prediction ============
 
   async predictSleepQuality(payload: AiPredictionRequest) {

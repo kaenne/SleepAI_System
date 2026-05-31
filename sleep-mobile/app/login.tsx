@@ -61,6 +61,30 @@ export default function LoginScreen() {
 
   const { signIn: signInWithGoogle, isPending: googlePending, isConfigured: googleConfigured } = useGoogleAuth(handleGoogleSuccess);
 
+  const handleForgotPassword = async () => {
+    const targetEmail = email.trim().toLowerCase();
+    if (!targetEmail || !targetEmail.includes('@')) {
+      Alert.alert(
+        t('login.forgotPwTitle') as string,
+        t('login.forgotPwNeedEmail') as string,
+      );
+      return;
+    }
+    try {
+      await api.forgotPassword(targetEmail);
+      Alert.alert(
+        t('login.forgotPwTitle') as string,
+        (t('login.forgotPwSent') as string).replace('{{email}}', targetEmail),
+      );
+    } catch (e: unknown) {
+      const err = e as { message?: string };
+      Alert.alert(
+        t('login.forgotPwTitle') as string,
+        err?.message || (t('login.forgotPwError') as string),
+      );
+    }
+  };
+
   const validateForm = () => {
     if (!email.trim()) {
       setValidationError(t('login.validate_email_empty') as string);
@@ -200,8 +224,8 @@ export default function LoginScreen() {
             </View>
 
             {/* Forgot Password */}
-            <Pressable 
-              onPress={() => Alert.alert('Восстановление пароля', 'Функция сброса пароля находится в разработке и будет добавлена в следующих версиях.')}
+            <Pressable
+              onPress={handleForgotPassword}
               style={styles.forgotPassword}
             >
               <ThemedText style={[styles.forgotPasswordText, { color: colors.tint }]}>
