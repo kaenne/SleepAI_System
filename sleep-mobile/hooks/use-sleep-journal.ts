@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect } from 'expo-router';
 import * as React from 'react';
 import { api } from '@/services/api';
 import { useAuth } from '@/contexts/auth-context';
@@ -184,6 +185,15 @@ export function useSleepJournal() {
     setEntries([]);
     void refresh();
   }, [key, refresh]);
+
+  // Re-fetch every time the consumer screen becomes focused. Without this
+  // each screen carries its own React state and Settings → Clear Data leaves
+  // Home/Stats/Profile rendering a stale copy until the app is restarted.
+  useFocusEffect(
+    React.useCallback(() => {
+      void refresh();
+    }, [refresh])
+  );
 
   const addEntry = React.useCallback(
     async (data: Omit<SleepStressEntry, 'id' | 'createdAt'> & { createdAt?: string }) => {
