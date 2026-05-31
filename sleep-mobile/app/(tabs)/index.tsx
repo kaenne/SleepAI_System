@@ -12,7 +12,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { SleepTimer } from '@/components/sleep-timer';
 import { AiTipCard } from '@/components/home/ai-info-cards';
 import { HomeActionBar } from '@/components/home/home-action-bar';
-import { QuickEntryForm } from '@/components/home/quick-entry-form';
+import { AiPredictionCard } from '@/components/home/ai-prediction-card';
 import { QuickStatsRow } from '@/components/home/quick-stats-row';
 import { ThemedText } from '@/components/themed-text';
 import { Btn } from '@/components/ui/btn';
@@ -154,8 +154,6 @@ export default function HomeScreen() {
               onAddPress={() => router.push('/modal')}
             />
 
-            <QuickEntryForm onEntrySaved={() => {}} />
-
             {/* Last-night recap card */}
             <Card variant="bordered" animated={false} style={{ marginTop: Spacing.sm }}>
               <View style={styles.lastNightHeader}>
@@ -187,6 +185,9 @@ export default function HomeScreen() {
                 </View>
               )}
             </Card>
+
+            {/* AI analysis of the latest entry — auto-fetched on mount */}
+            {latestEntry && <AiPredictionCard entry={latestEntry} />}
           </Animated.View>
         </ScrollView>
       )}
