@@ -8,13 +8,13 @@ import {
     KeyboardAvoidingView,
     Platform,
     Pressable,
-    SafeAreaView,
     ScrollView,
     StyleSheet,
     TextInput,
     View,
 } from 'react-native';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -40,6 +40,11 @@ export default function RegisterScreen() {
   const [validationError, setValidationError] = useState<string | null>(null);
   const [ageText, setAgeText] = useState('');
   const [gender, setGender] = useState<'male' | 'female' | null>(null);
+
+  // Clear any auth error left over from the previous screen on mount.
+  React.useEffect(() => {
+    clearError();
+  }, [clearError]);
 
   const validateForm = () => {
     if (!name.trim()) {
@@ -144,7 +149,7 @@ export default function RegisterScreen() {
                   styles.inputContainer,
                   {
                     backgroundColor: colors.inputBackground,
-                    borderColor: displayError && !name ? colors.error : colors.inputBorder,
+                    borderColor: validationError && !name ? colors.error : colors.inputBorder,
                   },
                 ]}
               >
@@ -175,7 +180,7 @@ export default function RegisterScreen() {
                   styles.inputContainer,
                   {
                     backgroundColor: colors.inputBackground,
-                    borderColor: displayError && !email ? colors.error : colors.inputBorder,
+                    borderColor: validationError && !email ? colors.error : colors.inputBorder,
                   },
                 ]}
               >
@@ -208,7 +213,7 @@ export default function RegisterScreen() {
                   styles.inputContainer,
                   {
                     backgroundColor: colors.inputBackground,
-                    borderColor: displayError && password.length > 0 && password.length < 6 
+                    borderColor: validationError && password.length > 0 && password.length < 6 
                       ? colors.error 
                       : colors.inputBorder,
                   },

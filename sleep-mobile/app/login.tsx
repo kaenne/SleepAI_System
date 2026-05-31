@@ -8,17 +8,17 @@ import {
     KeyboardAvoidingView,
     Platform,
     Pressable,
-    SafeAreaView,
     ScrollView,
     StyleSheet,
     TextInput,
     View,
 } from 'react-native';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { BorderRadius, Colors, Spacing } from '@/constants/theme';
+import { BorderRadius, Brand, Colors, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useTranslation } from '@/contexts/i18n-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -27,7 +27,7 @@ import { useResponsive } from '@/hooks/use-responsive';
 import { api } from '@/services/api';
 
 export default function LoginScreen() {
-  const colorScheme = useColorScheme() ?? 'light';
+  const colorScheme = useColorScheme() ?? 'dark';
   const colors = Colors[colorScheme];
   const { login, isLoading, error, clearError } = useAuth();
   const { t } = useTranslation();
@@ -38,6 +38,11 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [googleError, setGoogleError] = useState<string | null>(null);
+
+  // Clear any auth error left over from the previous screen on mount.
+  React.useEffect(() => {
+    clearError();
+  }, [clearError]);
 
   const handleGoogleSuccess = async (accessToken: string) => {
     setGoogleError(null);
@@ -221,23 +226,18 @@ export default function LoginScreen() {
             <Pressable
               style={[
                 styles.loginButton,
-                { opacity: anyLoading ? 0.7 : 1 },
+                { backgroundColor: Brand.accent, opacity: anyLoading ? 0.7 : 1 },
               ]}
               onPress={handleLogin}
               disabled={anyLoading}
             >
-              <LinearGradient
-                colors={[colors.headerGradientStart, colors.headerGradientEnd]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.loginButtonGradient}
-              >
-                {isLoading ? (
-                  <ActivityIndicator color="#FFFFFF" />
-                ) : (
-                  <ThemedText style={[styles.loginButtonText, { fontSize: rf(16) }]}>{t('login.submitBtn')}</ThemedText>
-                )}
-              </LinearGradient>
+              {isLoading ? (
+                <ActivityIndicator color={Brand.textInverse} />
+              ) : (
+                <ThemedText style={[styles.loginButtonText, { color: Brand.textInverse, fontSize: rf(16) }]}>
+                  {t('login.submitBtn')}
+                </ThemedText>
+              )}
             </Pressable>
 
             {/* Divider */}
@@ -387,7 +387,9 @@ const styles = StyleSheet.create({
   loginButton: {
     marginTop: Spacing.sm,
     borderRadius: BorderRadius.lg,
-    overflow: 'hidden',
+    paddingVertical: Spacing.md,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   loginButtonGradient: {
     paddingVertical: Spacing.md,
