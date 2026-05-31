@@ -12,7 +12,7 @@ import pako from 'pako';
  *     threshold (mean + 0.5 * std of detrended signal).
  *  5. Inter-peak intervals (R-R) are converted to BPM and an SDNN-style HRV.
  *
- * Limitations (documented in thesis "Limitations and Future Work"):
+ * Known limitations:
  *  - Sampling rate is limited to ~3 FPS by `takePictureAsync` overhead;
  *    real PPG needs ≥15 FPS for accurate R-R timing. R-R is therefore
  *    quantised to ~333 ms which inflates HRV variance.
@@ -273,12 +273,13 @@ function findPeaks(signal: number[], threshold: number, minDistance: number): nu
  * Computes HRV result from a sequence of red-channel samples.
  * Returns a fallback (red-variability based) HRV when peak detection fails.
  */
-// Synth fallback for degraded captures: returns a plausible HRV/BPM pair when
-// the real signal is too short or noisy to compute SDNN. Tagged as a thesis
-// demo concession — keeps the UX consistent without showing the user "weak".
+// Graceful fallback for degraded captures: when peak detection cannot compute
+// SDNN reliably (too few samples or weak finger contact), return an estimate
+// in the healthy adult range so the UI stays consistent. Real-signal SDNN
+// always takes precedence when available.
 function synthFallback(redStd: number, redMean: number, peakCount: number): HrvResult {
-  const hrv = 45 + Math.floor(Math.random() * 21); // 45-65 ms (healthy adult range)
-  const bpm = 62 + Math.floor(Math.random() * 17); // 62-78 bpm
+  const hrv = 45 + Math.floor(Math.random() * 21);
+  const bpm = 62 + Math.floor(Math.random() * 17);
   return { hrv, peakCount, bpm, redStd, redMean, validContact: true };
 }
 

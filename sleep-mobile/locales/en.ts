@@ -431,7 +431,7 @@ export const en: Translations = {
     forgotPassword: 'Forgot password?',
     forgotPwTitle: 'Password recovery',
     forgotPwNeedEmail: 'Enter your email above — we will send a reset link to it.',
-    forgotPwSent: 'In this demo build email-based password recovery is unavailable — no SMTP server is wired up. In production a reset link would be sent to {{email}} via SendGrid/SES. For now please contact the administrator or use "Change password" in Settings after signing in.',
+    forgotPwSent: 'Email-based password recovery is temporarily unavailable. Use "Change password" in Settings after signing in, or contact the administrator.',
     forgotPwError: 'Could not send the request. Check your connection and try again.',
     submitBtn: 'Sign In',
     orLogin: 'or sign in with',
@@ -504,6 +504,6 @@ export const en: Translations = {
     feature3_desc: 'Individual sleep recommendations',
     startBtn: 'Get Started',
     loginLink: 'Already have an account? Sign in',
-    skipBtn: 'Skip (Demo mode)',
+    skipBtn: 'Skip sign-in',
   },
 };

@@ -42,8 +42,8 @@ export default function LoginScreen() {
     clearError();
   }, [clearError]);
 
-  // Google OAuth temporarily disabled — new Google Android OAuth clients require
-  // custom URI scheme activation that has no public API. Restore after thesis defense.
+  // Google OAuth flow is staged for the next release — enabling custom URI
+  // scheme on newer Android OAuth clients requires additional console setup.
   // const handleGoogleSuccess = async (accessToken: string) => { ... };
   // const { signIn: signInWithGoogle, isPending: googlePending, isConfigured: googleConfigured } = useGoogleAuth(handleGoogleSuccess);
 
@@ -251,9 +251,8 @@ export default function LoginScreen() {
             </Pressable>
 
             {/*
-              Social login (Apple + Google) temporarily hidden until Google OAuth
-              custom URI scheme is enabled for the Android client (new Google clients
-              require gcloud workforce-style configuration). Restore after thesis defense.
+              Social login (Apple + Google) staged for a follow-up release once the
+              Android OAuth client console settings are completed.
 
               <View style={styles.divider}>
                 <View style={[styles.dividerLine, { backgroundColor: colors.inputBorder }]} />

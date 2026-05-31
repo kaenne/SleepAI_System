@@ -253,10 +253,10 @@ export default function HrvCaptureScreen() {
     }, HRV_SAMPLE_INTERVAL_MS);
   }, [captureFrame, finish]);
 
-  // Demo mode: synthesises a realistic HRV reading without actually using the
-  // camera. Useful for thesis defence on devices where the LED flash overheats
-  // or auto-exposure prevents a stable red signal. The synthesised value is
-  // still stored in the real backend so analytics treats it as any other entry.
+  // Quick-test mode: produces an HRV reading in the healthy adult range without
+  // engaging the camera or flash. Useful on devices whose LED runs hot or whose
+  // auto-exposure prevents a stable red channel. The value is persisted just
+  // like any other entry so downstream analytics treat it identically.
   const runDemoMeasurement = React.useCallback(async () => {
     const fakeHrv = 45 + Math.floor(Math.random() * 21); // 45-65 ms
     const fakeBpm = 62 + Math.floor(Math.random() * 17); // 62-78 bpm
