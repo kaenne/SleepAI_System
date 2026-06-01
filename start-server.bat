@@ -1,10 +1,10 @@
 @echo off
-title SleepAI Defence - Startup
+title SleepAI Server - Startup
 chcp 65001 >nul
 cls
 
 echo ============================================================
-echo   SleepAI Defence Startup
+echo   SleepAI Server Startup
 echo ============================================================
 echo.
 
@@ -63,6 +63,6 @@ echo   Public URL:  https://hasty-footpad-afloat.ngrok-free.dev
 echo   Health:      https://hasty-footpad-afloat.ngrok-free.dev/health
 echo.
 echo   ngrok runs in the OTHER window - do NOT close it.
-echo   When defence is over, run STOP-DEFENCE.bat to clean up.
+echo   When demo session is over, run STOP-SERVER.bat to clean up.
 echo.
 pause

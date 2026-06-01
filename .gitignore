@@ -39,7 +39,7 @@ Thumbs.db
 # Context files (generated)
 *_context.txt
 
-# Claude Code session state — local-only
+# Local IDE / tooling state
 .claude/
 .agents/
 skills-lock.json

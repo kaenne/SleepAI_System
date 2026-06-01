@@ -325,8 +325,8 @@ export default function ChatScreen() {
 
   const newMessageIds = React.useRef(new Set<string>(['welcome']));
 
-  // Reset the chat whenever the active language changes — Claude keys off the
-  // conversation history's language, so without a reset it keeps replying in the
+  // Reset the chat whenever the active language changes — the LLM infers reply
+  // language from prior turns, so without a reset it keeps answering in the
   // original language even after the UI switches.
   const lastLangRef = React.useRef(language);
   React.useEffect(() => {

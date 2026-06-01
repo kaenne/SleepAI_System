@@ -1,10 +1,10 @@
 @echo off
-title SleepAI Defence - Shutdown
+title SleepAI Server - Shutdown
 chcp 65001 >nul
 cls
 
 echo ============================================================
-echo   SleepAI Defence Shutdown
+echo   SleepAI Server Shutdown
 echo ============================================================
 echo.
 
